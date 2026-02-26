@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>APEX Ω v8.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#040407;--card:#0b0b14;--border:#1a1a2e;
+  --g:#00ffaa;--p:#9d5cf5;--r:#ff5533;--y:#f5c400;
+  --dim:#2e2e50;--txt:#c0c8e0;--txt2:#505078;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--txt);font-family:'Share Tech Mono',monospace;min-height:100vh}
+
+/* ── STICKY HEADER ─────────────────────────────── */
+#hdr{
+  position:sticky;top:0;z-index:200;height:50px;
+  background:rgba(4,4,7,.97);border-bottom:1px solid var(--border);
+  backdrop-filter:blur(12px);
+  display:flex;align-items:center;gap:12px;padding:0 16px;
+}
+#logo{
+  font-family:'Orbitron',sans-serif;font-size:15px;font-weight:900;
+  color:var(--g);letter-spacing:4px;white-space:nowrap;flex-shrink:0;
+}
+/* progress bar under header */
+#progress-bar{
+  position:sticky;top:50px;z-index:199;height:3px;
+  background:var(--border);
+}
+#progress-fill{
+  height:3px;background:linear-gradient(90deg,var(--g),var(--p));
+  width:0%;transition:width .6s ease;
+}
+
+/* phase steps scroll */
+#phase-bar{display:flex;flex:1;overflow-x:auto;scrollbar-width:none}
+#phase-bar::-webkit-scrollbar{display:none}
+.ph{
+  padding:0 10px;height:50px;display:flex;align-items:center;
+  font-size:9px;letter-spacing:1px;color:var(--dim);
+  border-bottom:2px solid transparent;transition:.3s;
+  white-space:nowrap;flex-shrink:0;gap:5px;
+}
+.ph.active{color:var(--g);border-color:var(--g);background:rgba(0,255,170,.04)}
+.ph.done{color:var(--p);border-color:var(--p)}
+.ph.error{color:var(--r);border-color:var(--r)}
+.ph-ck{display:none}
+.ph.done .ph-ck{display:inline}
+#glob-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--dim);flex-shrink:0;transition:.4s;
+}
+#glob-dot.run{background:var(--g);box-shadow:0 0 10px var(--g);animation:pulse 1s infinite}
+#glob-dot.ok{background:var(--p)}
+#glob-dot.err{background:var(--r)}
+@keyframes pulse{50%{opacity:.3}}
+
+/* ── LAYOUT ─────────────────────────────────────── */
+#wrap{max-width:820px;margin:0 auto;padding:20px 16px 100px}
+
+/* ── INPUT PANEL ─────────────────────────────────── */
+#inp-panel{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:8px;padding:18px;margin-bottom:20px;
+}
+.lbl{font-size:9px;letter-spacing:2px;color:var(--g);margin-bottom:6px;display:block}
+.irow{display:flex;gap:8px;margin-bottom:12px}
+.inp{
+  background:#000;color:var(--g);
+  border:1px solid var(--border);
+  padding:10px 12px;border-radius:4px;outline:none;
+  font-family:'Share Tech Mono',monospace;font-size:13px;
+  width:100%;transition:.3s;
+}
+.inp:focus{border-color:var(--g)}
+textarea.inp{resize:vertical;min-height:90px}
+.btn{
+  background:transparent;border:1px solid var(--g);color:var(--g);
+  padding:10px 18px;border-radius:4px;cursor:pointer;
+  font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;
+  letter-spacing:2px;transition:.25s;white-space:nowrap;
+}
+.btn:hover:not(:disabled){background:var(--g);color:#000;box-shadow:0 0 18px var(--g)50}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+.btn.s{border-color:var(--p);color:var(--p)}
+.btn.s:hover:not(:disabled){background:var(--p);color:#fff}
+.btn.d{border-color:var(--dim);color:var(--dim)}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+/* status bar */
+#status-bar{
+  display:none;margin-top:10px;padding:10px 14px;
+  border-radius:4px;font-size:11px;line-height:1.7;
+}
+#status-bar.info{background:rgba(0,255,170,.06);border:1px solid var(--g);color:var(--g)}
+#status-bar.err{background:rgba(255,85,51,.06);border:1px solid var(--r);color:var(--r)}
+#status-bar.warn{background:rgba(245,196,0,.06);border:1px solid var(--y);color:var(--y)}
+
+/* countdown */
+#countdown{
+  display:none;align-items:center;gap:10px;
+  margin-top:10px;padding:10px 14px;
+  border:1px solid var(--border);border-radius:4px;
+  font-size:12px;color:var(--txt2);
+}
+#countdown.show{display:flex}
+#cd-num{
+  font-family:'Orbitron',sans-serif;font-size:20px;font-weight:700;
+  color:var(--y);min-width:30px;text-align:center;
+}
+#cd-bar-track{flex:1;background:var(--border);border-radius:2px;height:4px;overflow:hidden}
+#cd-bar-fill{height:4px;background:var(--y);transition:width .95s linear}
+
+/* help text */
+.help{font-size:10px;color:var(--txt2);margin-top:10px;line-height:1.9}
+.help a{color:var(--g);text-decoration:none}
+
+/* ── CARDS ───────────────────────────────────────── */
+.card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:8px;margin-bottom:14px;overflow:hidden;
+  animation:slideUp .35s ease;
+}
+@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.card-hdr{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 16px;background:rgba(0,0,0,.35);
+  border-bottom:1px solid var(--border);
+}
+.card-num{
+  font-size:8px;letter-spacing:2px;color:var(--p);
+  border:1px solid var(--p)50;padding:2px 7px;border-radius:2px;
+}
+.card-title{font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px}
+.card-body{padding:16px;font-size:12px;line-height:1.9}
+
+/* retry button in card header */
+.retry-btn{
+  margin-left:auto;font-size:9px;padding:3px 10px;
+  border:1px solid var(--r);color:var(--r);background:transparent;
+  border-radius:2px;cursor:pointer;font-family:'Share Tech Mono',monospace;
+  transition:.2s;
+}
+.retry-btn:hover{background:var(--r);color:#fff}
+
+/* loading */
+.ld{color:var(--p)}
+.dots::after{content:'';animation:d 1.3s infinite}
+@keyframes d{0%{content:''}33%{content:'.'}66%{content:'..'}100%{content:'...'}}
+
+/* ── PHASE 1 ─────────────────────────────────────── */
+.gbox{border:1px solid var(--border);border-radius:4px;padding:12px;margin-bottom:8px}
+.gbox.sel{border-color:var(--g);background:rgba(0,255,170,.04)}
+.g-lbl{font-size:8px;letter-spacing:2px;color:var(--txt2);margin-bottom:3px}
+.g-goal{color:var(--g);margin-bottom:4px}
+.g-why{font-size:11px;color:var(--txt2)}
+.constraint-list{margin-top:12px;font-size:10px;color:var(--txt2)}
+.constraint-list span{color:var(--r);margin-right:10px}
+
+/* ── PHASE 2 ─────────────────────────────────────── */
+.layer{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start}
+.l-type{
+  font-size:8px;padding:3px 7px;border-radius:2px;
+  white-space:nowrap;flex-shrink:0;margin-top:2px;
+}
+.l-q{font-size:10px;color:var(--txt2);margin-bottom:2px}
+.l-a{font-size:12px}
+.bottleneck{
+  border:1px solid var(--p)60;border-radius:4px;
+  background:rgba(157,92,245,.05);padding:12px;margin-top:12px;
+}
+.b-lbl{font-size:8px;letter-spacing:2px;color:var(--p);margin-bottom:5px}
+
+/* ── PHASE 3 ─────────────────────────────────────── */
+.s-card{
+  border:1px solid var(--border);border-radius:4px;
+  padding:14px;margin-bottom:10px;
+}
+.s-id{font-size:8px;letter-spacing:2px;margin-bottom:4px}
+.s-name{font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;margin-bottom:8px}
+.s-desc{font-size:11px;color:var(--txt2);line-height:1.8;margin-bottom:8px}
+.s-meta{font-size:10px;color:var(--dim)}
+
+/* ── PHASE 4 ─────────────────────────────────────── */
+.ax-row{margin-bottom:13px}
+.ax-head{display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px}
+.ax-vals{display:flex;gap:8px}
+.av{font-weight:700;cursor:help;position:relative}
+.bars{display:flex;flex-direction:column;gap:3px}
+.bt{background:#080810;border-radius:2px;height:6px;overflow:hidden}
+.bf{height:6px;border-radius:2px;width:0;transition:width 1.3s cubic-bezier(.4,0,.2,1)}
+.totals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+.tc{border:1px solid var(--border);border-radius:4px;padding:12px;text-align:center}
+.tc.win{border-color:var(--p);box-shadow:0 0 20px var(--p)15}
+.t-big{font-family:'Orbitron',sans-serif;font-size:30px;font-weight:900;line-height:1}
+.t-sub{font-size:9px;color:var(--txt2);letter-spacing:1px;margin-top:4px}
+.t-prob{font-size:10px;color:var(--txt2);margin-top:5px}
+.chart-wrap{border:1px solid var(--border);border-radius:4px;padding:14px;margin-top:14px}
+
+/* ── PHASE 5 ─────────────────────────────────────── */
+.d-head{
+  font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;
+  letter-spacing:2px;color:var(--r);margin-bottom:12px;
+}
+.d-atk{border-left:2px solid var(--r);padding:8px 12px;margin-bottom:8px}
+.d-angle{font-size:8px;color:var(--r);letter-spacing:2px;margin-bottom:3px}
+.d-txt{font-size:12px;color:var(--txt2)}
+.fatal{border:1px solid var(--r);border-radius:4px;background:rgba(255,85,51,.05);padding:12px;margin-top:12px}
+.fatal-lbl{font-size:8px;color:var(--r);letter-spacing:2px;margin-bottom:4px}
+.fatal-txt{color:var(--r);font-size:12px}
+
+/* ── PHASE 7 ─────────────────────────────────────── */
+.v-box{border:1px solid var(--g);border-radius:8px;background:rgba(0,255,170,.03);padding:22px;text-align:center}
+.v-circle{
+  width:100px;height:100px;border-radius:50%;border:2px solid var(--g);
+  margin:0 auto 18px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:rgba(0,255,170,.06);box-shadow:0 0 40px var(--g)20;
+}
+.v-num{font-family:'Orbitron',sans-serif;font-size:30px;font-weight:900;color:var(--g)}
+.v-sub{font-size:8px;color:var(--txt2);letter-spacing:2px}
+.v-txt{font-family:'Orbitron',sans-serif;font-size:14px;font-weight:700;color:var(--g);line-height:1.6;margin-bottom:18px}
+.v-reasons{text-align:left;margin-top:14px}
+.v-reason{font-size:11px;color:var(--txt2);padding:5px 0;border-bottom:1px solid var(--border)}
+.v-reason::before{content:'→ ';color:var(--g)}
+.v-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;text-align:left}
+.v-mbox{border:1px solid var(--border);border-radius:4px;padding:12px}
+.v-mlbl{font-size:8px;letter-spacing:2px;margin-bottom:5px}
+.v-mtxt{font-size:11px}
+
+/* ── ERROR BOX ───────────────────────────────────── */
+.err-box{
+  border:1px solid var(--r);border-radius:4px;
+  background:rgba(255,85,51,.05);padding:14px;margin-bottom:10px;
+}
+.err-box summary{cursor:pointer;outline:none;color:var(--r);font-size:12px}
+.err-detail{font-size:10px;color:var(--txt2);margin-top:8px;white-space:pre-wrap;word-break:break-all;background:#000;padding:10px;border-radius:2px}
+.err-tips{font-size:11px;margin-top:8px;line-height:2;color:var(--txt2)}
+.err-tips b{color:var(--y)}
+
+/* ── MISC ────────────────────────────────────────── */
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-thumb{background:var(--border)}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="hdr">
+  <div id="logo">APEX Ω</div>
+  <div id="phase-bar">
+    <div class="ph" id="ph1">01·REFINE<span class="ph-ck"> ✓</span></div>
+    <div class="ph" id="ph2">02·DECOMPOSE<span class="ph-ck"> ✓</span></div>
+    <div class="ph" id="ph3">03·STRATEGIZE<span class="ph-ck"> ✓</span></div>
+    <div class="ph" id="ph4">04·SCORE<span class="ph-ck"> ✓</span></div>
+    <div class="ph" id="ph5">05·CHALLENGE<span class="ph-ck"> ✓</span></div>
+    <div class="ph" id="ph6">06·RE-EVAL<span class="ph-ck"> ✓</span></div>
+    <div class="ph" id="ph7">07·VERDICT<span class="ph-ck"> ✓</span></div>
+  </div>
+  <div id="glob-dot"></div>
+</div>
+<div id="progress-bar"><div id="progress-fill"></div></div>
+
+<div id="wrap">
+
+  <!-- INPUT -->
+  <div id="inp-panel">
+    <div style="font-family:'Orbitron',sans-serif;font-size:9px;color:var(--p);letter-spacing:3px;margin-bottom:16px">
+      APEX Ω v9.0 — AUTONOMOUS STRATEGIC INTELLIGENCE ENGINE
+    </div>
+
+    <label class="lbl">GEMINI API KEY</label>
+    <div class="irow">
+      <input class="inp" type="password" id="apiKey" placeholder="AIzaSy...">
+      <button class="btn s" onclick="testConn()" id="testBtn">TEST</button>
+    </div>
+
+    <label class="lbl">STRATEGIC PROBLEM</label>
+    <textarea class="inp" id="prob" placeholder="例: 新規SaaSの市場参入タイミング。競合3社あり、資本金500万円、チーム3名。6ヶ月以内に収益化必須。"></textarea>
+
+    <div class="btn-row">
+      <button class="btn" id="runBtn" onclick="runAPEX()">▶ ENGAGE APEX</button>
+      <button class="btn d" onclick="clearAll()">✕ CLEAR</button>
+    </div>
+
+    <div id="status-bar"></div>
+
+    <div id="countdown">
+      <span style="font-size:10px;color:var(--txt2)">NEXT PHASE IN</span>
+      <span id="cd-num">--</span>
+      <div id="cd-bar-track"><div id="cd-bar-fill" style="width:100%"></div></div>
+    </div>
+
+    <div class="help">
+      APIキー: <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a> → Get API Key → AIzaSy... をコピー（無料）<br>
+      ⚡ v9.0: TESTはAPI枠を消費しない。ENGAGEしたら完走まで放置でOK。
+    </div>
+  </div>
+
+  <!-- OUTPUT -->
+  <div id="output"></div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════
+const GEMINI_MODEL   = 'gemini-2.0-flash';
+const CALL_GAP_MS    = 5500;  // 5.5秒固定間隔 = 最大10.9回/分 → 無料枠15回/分に物理的に届かない
+const PHASE_GAP_MS   = 800;   // フェーズ間の視覚的ギャップ（rate limitとは別）
+const WAIT_429_SEC   = 95;    // 429発生時の待機秒数（Gemini窓リセットに90秒必要）
+
+const W      = {strategic:.25, financial:.20, risk:.20, execution:.20, psychological:.15};
+const COLORS = {A:'#00ffaa', B:'#9d5cf5', C:'#ff5533'};
+
+// ═══════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════
+let ST = {};
+let chartInst   = null;
+let isRunning   = false;
+let lastCallAt  = 0;  // ページ内での最後のリクエスト時刻
+
+// ── シンプルな固定間隔レート制御 ──────────────────
+// ポイント: reqLogやスライディングウィンドウは使わない。
+// 「前回リクエストから5.5秒経っていなければ待つ」だけ。
+// ページリロードしても lastCallAt=0 → 最初は即実行OK。
+// 前セッションの残りカウントは関係なく、間隔だけ守る。
+async function rateGate(label) {
+  const gap = CALL_GAP_MS - (Date.now() - lastCallAt);
+  if (gap > 0) {
+    const sec = Math.ceil(gap / 1000);
+    showStatus(`⏳ ${label} — 待機中 ${sec}秒 (Rate limit対策)`, 'warn');
+    const stop = startCountdown(sec);
+    await sleep(gap);
+    stop();
+    hideStatus();
+  }
+  lastCallAt = Date.now();
+}
+
+// ═══════════════════════════════════════════════════
+//  DOM HELPERS
+// ═══════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function setPhase(n, cls) {
+  const el = $('ph'+n);
+  if (el) el.className = 'ph '+(cls||'');
+}
+
+function setDot(cls) { $('glob-dot').className = cls; }
+
+function setProgress(n) { // n = 0-7
+  $('progress-fill').style.width = (n/7*100)+'%';
+}
+
+function showStatus(msg, type='info') {
+  const s = $('status-bar');
+  s.style.display = 'block';
+  s.className = type;
+  s.innerHTML = msg;
+}
+function hideStatus() { $('status-bar').style.display='none'; }
+
+// Countdown timer display
+function startCountdown(totalSec) {
+  const cd = $('countdown');
+  const numEl = $('cd-num');
+  const fill = $('cd-bar-fill');
+  cd.classList.add('show');
+  let rem = totalSec;
+  numEl.textContent = rem;
+  fill.style.transition = 'none';
+  fill.style.width = '100%';
+  void fill.offsetWidth; // reflow
+  fill.style.transition = `width ${totalSec}s linear`;
+  fill.style.width = '0%';
+  const iv = setInterval(() => {
+    rem--;
+    numEl.textContent = Math.max(0, rem);
+    if (rem <= 0) clearInterval(iv);
+  }, 1000);
+  return () => { clearInterval(iv); cd.classList.remove('show'); };
+}
+
+function addCard(id, num, title, body, showRetry=false) {
+  const out = $('output');
+  let c = $(id);
+  if (!c) { c = document.createElement('div'); c.id = id; c.className = 'card'; out.appendChild(c); }
+  const retryHtml = showRetry
+    ? `<button class="retry-btn" onclick="retryPhase(${num})">↺ RETRY</button>` : '';
+  c.innerHTML = `
+    <div class="card-hdr">
+      <span class="card-num">PHASE ${String(num).padStart(2,'0')}</span>
+      <span class="card-title">${title}</span>
+      ${retryHtml}
+    </div>
+    <div class="card-body">${body}</div>`;
+  setTimeout(() => c.scrollIntoView({behavior:'smooth', block:'nearest'}), 50);
+}
+
+function loadCard(id, num, title, msg) {
+  addCard(id, num, title, `<div class="ld">// ${esc(msg)}<span class="dots"></span></div>`);
+}
+
+function showErrCard(id, num, phLabel, detail) {
+  // Extract just the key message (first line, max 200 chars)
+  const msg = String(detail).split('\n')[0].slice(0, 200);
+  addCard(id, num, phLabel,
+    `<div class="err-box">
+      <div style="color:var(--r);font-size:12px;margin-bottom:8px">⚠ ${esc(msg)}</div>
+      <div style="font-size:10px;color:var(--txt2);background:#000;padding:8px;border-radius:2px;word-break:break-all">${esc(String(detail).slice(0,500))}</div>
+    </div>
+    <div class="err-tips" style="margin-top:10px">
+      <b>対処法：</b><br>
+      1. APIキー確認 → TESTボタンで接続テスト<br>
+      2. Rate Limit → ↺RETRYを押す（自動で待機後に再実行）<br>
+      3. JSON失敗 → ↺RETRYで大抵直る
+    </div>`, true);
+  setPhase(num, 'error');
+}
+
+function clearAll() {
+  $('output').innerHTML = '';
+  [1,2,3,4,5,6,7].forEach(n => setPhase(n,''));
+  setDot(''); setProgress(0);
+  ST = {};
+  if (chartInst) { chartInst.destroy(); chartInst = null; }
+  hideStatus();
+  $('countdown').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════════
+//  JSON REPAIR — 5段階パーサー
+// ═══════════════════════════════════════════════════
+function safeJSON(text) {
+  if (!text) return null;
+
+  // Stage 1: direct
+  try { return JSON.parse(text); } catch(_) {}
+
+  // Stage 2: strip markdown fences
+  let t = text.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/\s*```\s*$/,'').trim();
+  try { return JSON.parse(t); } catch(_) {}
+
+  // Stage 3: extract {...} block
+  const m = text.match(/\{[\s\S]*\}/);
+  if (m) try { return JSON.parse(m[0]); } catch(_) {}
+
+  // Stage 4: fix common LLM JSON mistakes
+  let fixed = (m ? m[0] : t)
+    .replace(/,\s*([}\]])/g, '$1')           // trailing commas
+    .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":')// unquoted keys
+    .replace(/:\s*'([^']*)'/g, ':"$1"')      // single-quoted values
+    .replace(/\n/g,' ');
+  try { return JSON.parse(fixed); } catch(_) {}
+
+  // Stage 5: log and fail
+  console.warn('safeJSON: all stages failed. Raw:', text.slice(0, 400));
+  return null;
+}
+
+// ═══════════════════════════════════════════════════
+//  API CALL — 固定間隔制御 + 429自動リカバリ
+// ═══════════════════════════════════════════════════
+async function callGemini(system, user, phaseLabel='API') {
+  const key = $('apiKey').value.trim();
+  if (!key) throw new Error('APIキーが入力されていません');
+
+  // 前リクエストから5.5秒未満なら待機
+  await rateGate(phaseLabel);
+
+  const url  = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
+  const body = JSON.stringify({
+    systemInstruction: { parts:[{ text: system }] },
+    contents: [{ role:'user', parts:[{ text: user }] }],
+    generationConfig: { temperature:0.25, maxOutputTokens:2000 }
+  });
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    let res, raw;
+    try {
+      res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body });
+      raw = await res.text();
+    } catch(netErr) {
+      if (attempt < 2) { await sleep(4000); lastCallAt = Date.now(); continue; }
+      throw new Error('ネットワーク接続エラー: '+netErr.message);
+    }
+
+    // ── 成功 ────────────────────────────────────────
+    if (res.ok) {
+      let data;
+      try { data = JSON.parse(raw); } catch(_) {
+        throw new Error('Gemini応答JSONが壊れています: '+raw.slice(0,150));
+      }
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) {
+        const reason = data?.candidates?.[0]?.finishReason || 'UNKNOWN';
+        if (reason === 'SAFETY')     throw new Error('セーフティフィルターでブロック。問題文の表現を変えてください。');
+        if (reason === 'RECITATION') throw new Error('著作権フィルターにかかりました。問題文を変えてください。');
+        throw new Error('Gemini応答が空 (finishReason:'+reason+')');
+      }
+      return text;
+    }
+
+    // ── エラー処理 ───────────────────────────────────
+    let apiMsg = `HTTP ${res.status}`;
+    try { apiMsg = JSON.parse(raw).error?.message || apiMsg; } catch(_) {}
+
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(`認証エラー(${res.status}) — APIキーが無効です。aistudio.google.comで再発行してください。`);
+    }
+
+    if (res.status === 429) {
+      if (attempt < 2) {
+        // Geminiのサーバー側ウィンドウを完全リセットさせるため95秒待つ
+        showStatus(`⚠ Rate Limit (429) — ${WAIT_429_SEC}秒待機後に自動リトライ (${attempt+1}/2)`, 'warn');
+        const stop = startCountdown(WAIT_429_SEC);
+        await sleep(WAIT_429_SEC * 1000);
+        stop(); hideStatus();
+        lastCallAt = 0; // 待機後は間隔チェックをスキップして即リトライ
+        continue;
+      }
+      throw new Error(`429 Rate Limit — 2回リトライ失敗。3分待ってから↺RETRYを押してください。`);
+    }
+
+    if (res.status === 400) throw new Error('400 Bad Request: '+apiMsg);
+    throw new Error(apiMsg);
+  }
+  throw new Error('最大リトライ回数超過');
+}
+
+// ═══════════════════════════════════════════════════
+//  CONNECTION TEST
+// ═══════════════════════════════════════════════════
+async function testConn() {
+  const key = $('apiKey').value.trim();
+  const btn = $('testBtn');
+  btn.disabled = true; btn.textContent = '...';
+  // APIを叩かずキー形式だけチェック（枠を消費しない）
+  if (!key) {
+    showStatus('✗ APIキーを入力してください', 'err');
+  } else if (!key.startsWith('AIza') || key.length < 30) {
+    showStatus('✗ キー形式が違う — AIzaSy... で始まる39文字のキーか確認して', 'err');
+  } else {
+    showStatus('✓ キー形式OK — ENGAGEを押してスタート！（接続はENGAGE時に確認）', 'info');
+  }
+  btn.disabled = false; btn.textContent = 'TEST';
+}
+
+// ═══════════════════════════════════════════════════
+//  PHASES
+// ═══════════════════════════════════════════════════
+
+// ── Phase 1: Goal Refiner ──────────────────────────
+async function phase1(input) {
+  setPhase(1,'active');
+  loadCard('c1',1,'GOAL REFINEMENT','真の目標を再定義中');
+  const safeInput = input.replace(/\\/g,'\\\\').replace(/"/g,'\\"').slice(0,800);
+  const raw = await callGemini(
+    'You output ONLY raw JSON. Never add markdown, code fences, or explanation.',
+    `You are a goal clarification AI. Analyze the input below and respond with ONLY a JSON object.
+Do NOT use placeholder text. Write real Japanese content for every field.
+
+Input: "${safeInput}"
+
+Respond with ONLY this JSON structure (replace ALL values with real Japanese content):
+{"interpretations":[{"version":"表面的解釈","goal":"[実際のゴール内容]","why":"[理由]"},{"version":"深層ニーズ","goal":"[より深いゴール内容]","why":"[理由]"},{"version":"最適化解釈","goal":"[最適化されたゴール内容]","why":"[理由]"}],"selected":2,"refinedGoal":"[最も明確な1文のゴール]","hiddenConstraints":["[制約1]","[制約2]","[制約3]"]}`
+  );
+
+  const j = safeJSON(raw);
+  if (!j?.refinedGoal) throw new Error('Phase1 JSONパース失敗。Geminiの生の応答:\n'+raw.slice(0,500));
+  // validate - if refinedGoal contains placeholder text, retry logic
+  if (j.refinedGoal.includes('[') || j.refinedGoal === '最も明確な1文のゴール') {
+    throw new Error('Phase1: Geminiがプレースホルダーを返しました。↺RETRYを押してください。\n生の応答: '+raw.slice(0,200));
+  }
+  ST.goal = j;
+
+  addCard('c1',1,'GOAL REFINEMENT',
+    j.interpretations.map((it,i)=>`
+      <div class="gbox ${i===j.selected?'sel':''}">
+        <div class="g-lbl">${esc(it.version)} ${i===j.selected?'← SELECTED':''}</div>
+        <div class="g-goal">${esc(it.goal)}</div>
+        <div class="g-why">${esc(it.why)}</div>
+      </div>`).join('')
+    +(j.hiddenConstraints?.length?
+      `<div class="constraint-list">HIDDEN CONSTRAINTS: ${j.hiddenConstraints.map(c=>`<span>${esc(c)}</span>`).join('')}</div>`:''
+    )
+  );
+  setPhase(1,'done');
+  setProgress(1);
+}
+
+// ── Phase 2: Decomposer ────────────────────────────
+async function phase2() {
+  setPhase(2,'active');
+  loadCard('c2',2,'PROBLEM DECOMPOSITION','5階層に分解中');
+  const raw = await callGemini(
+    'You output ONLY raw JSON. Never add markdown, code fences, or explanation.',
+    `You are a strategic problem decomposition AI. Analyze the goal below and respond with ONLY a JSON object.
+Do NOT use placeholder text. Write real Japanese analysis for every field.
+
+Goal: "${ST.goal.refinedGoal.replace(/"/g,'\\"')}"
+
+Respond with ONLY this JSON (replace ALL bracketed values with real content):
+{"layers":[{"level":1,"type":"WHY","question":"なぜこれが問題か","answer":"[実際の分析]"},{"level":2,"type":"WHAT","question":"核心要素は何か","answer":"[実際の分析]"},{"level":3,"type":"HOW","question":"どう解決するか","answer":"[実際の分析]"},{"level":4,"type":"RISK","question":"何が失敗要因か","answer":"[実際の分析]"},{"level":5,"type":"METRIC","question":"成功を何で測るか","answer":"[具体的な数値指標]"}],"coreBottleneck":"[最重要制約の1文]"}`
+  );
+
+  const j = safeJSON(raw);
+  if (!j?.layers?.length) throw new Error('Phase2 JSONパース失敗。生の応答:\n'+raw.slice(0,500));
+  ST.decomp = j;
+
+  const TC = {WHY:'#00ffaa',WHAT:'#9d5cf5',HOW:'#06b6d4',RISK:'#f97316',METRIC:'#f5c400'};
+  addCard('c2',2,'PROBLEM DECOMPOSITION',
+    j.layers.map(l=>`
+      <div class="layer">
+        <div class="l-type" style="background:${TC[l.type]||'#999'}15;color:${TC[l.type]||'#999'};border:1px solid ${TC[l.type]||'#999'}40">${l.type}</div>
+        <div><div class="l-q">${esc(l.question)}</div><div class="l-a">${esc(l.answer)}</div></div>
+      </div>`).join('')
+    +`<div class="bottleneck"><div class="b-lbl">CORE BOTTLENECK</div>${esc(j.coreBottleneck)}</div>`
+  );
+  setPhase(2,'done');
+  setProgress(2);
+}
+
+// ── Phase 3: Strategy Generator ───────────────────
+async function phase3() {
+  setPhase(3,'active');
+  loadCard('c3',3,'STRATEGY GENERATION','3戦略案を生成中');
+  const raw = await callGemini(
+    'You output ONLY raw JSON. Never add markdown, code fences, or explanation.',
+    `You are a strategy generation AI. Generate 3 strategies for the goal below.
+Do NOT use placeholder text. Write real, specific Japanese content.
+
+Goal: "${ST.goal.refinedGoal.replace(/"/g,'\\"')}"
+Bottleneck: "${ST.decomp.coreBottleneck.replace(/"/g,'\\"')}"
+
+Respond with ONLY this JSON:
+{"strategies":[{"id":"A","archetype":"Conservative","name":"[戦略名]","description":"[3ステップの具体的な行動計画]","timeline":"[X週間]","resources":"[必要リソース]","keyAssumption":"[前提条件]"},{"id":"B","archetype":"Aggressive","name":"[戦略名]","description":"[3ステップの具体的な行動計画]","timeline":"[X週間]","resources":"[必要リソース]","keyAssumption":"[前提条件]"},{"id":"C","archetype":"Contrarian","name":"[戦略名]","description":"[3ステップの具体的な行動計画]","timeline":"[X週間]","resources":"[必要リソース]","keyAssumption":"[前提条件]"}]}`
+  );
+
+  const j = safeJSON(raw);
+  if (!j?.strategies?.length) throw new Error('Phase3 JSONパース失敗。生の応答:\n'+raw.slice(0,500));
+  ST.strats = j.strategies;
+
+  addCard('c3',3,'STRATEGY GENERATION',
+    ST.strats.map(s=>`
+      <div class="s-card">
+        <div class="s-id" style="color:${COLORS[s.id]}">${s.id} — ${esc(s.archetype||'').toUpperCase()}</div>
+        <div class="s-name" style="color:${COLORS[s.id]}">${esc(s.name)}</div>
+        <div class="s-desc">${esc(s.description)}</div>
+        <div class="s-meta">⏱ ${esc(s.timeline)} &nbsp;|&nbsp; 📦 ${esc(s.resources)}</div>
+        <div class="s-meta" style="color:var(--p);margin-top:5px">前提: ${esc(s.keyAssumption)}</div>
+      </div>`).join('')
+  );
+  setPhase(3,'done');
+  setProgress(3);
+}
+
+// ── Phase 4: Scorer ────────────────────────────────
+async function phase4() {
+  setPhase(4,'active');
+  loadCard('c4',4,'5-AXIS SCORING','5軸スコアリング中');
+  const stratSummary = ST.strats.map(s=>`${s.id}:${s.name}`).join(', ');
+  const raw = await callGemini(
+    'You output ONLY raw JSON. Never add markdown, code fences, or explanation.',
+    `You are a strategic scoring AI. Score these 3 strategies on 5 axes (0-100 integers).
+Risk score: 100=safest. Execution score: 100=easiest. Write real Japanese reasons.
+
+Strategies: ${stratSummary}
+Goal: "${ST.goal.refinedGoal.replace(/"/g,'\\"')}"
+
+Respond with ONLY this JSON:
+{"scores":[{"id":"A","axes":{"strategic":{"score":70,"reason":"[根拠]"},"financial":{"score":65,"reason":"[根拠]"},"risk":{"score":80,"reason":"[根拠]"},"execution":{"score":75,"reason":"[根拠]"},"psychological":{"score":70,"reason":"[根拠]"}}},{"id":"B","axes":{"strategic":{"score":80,"reason":"[根拠]"},"financial":{"score":70,"reason":"[根拠]"},"risk":{"score":55,"reason":"[根拠]"},"execution":{"score":50,"reason":"[根拠]"},"psychological":{"score":65,"reason":"[根拠]"}}},{"id":"C","axes":{"strategic":{"score":65,"reason":"[根拠]"},"financial":{"score":80,"reason":"[根拠]"},"risk":{"score":60,"reason":"[根拠]"},"execution":{"score":60,"reason":"[根拠]"},"psychological":{"score":60,"reason":"[根拠]"}}}]}`
+  );
+
+  const j = safeJSON(raw);
+  if (!j?.scores?.length) throw new Error('Phase4 JSONパース失敗。生の応答:\n'+raw.slice(0,500));
+
+  // compute totals
+  j.scores.forEach(s => {
+    let t = 0;
+    Object.entries(W).forEach(([ax,w]) => t += (s.axes[ax]?.score||50)*w);
+    s.total = Math.round(t);
+    s.prob  = Math.min(94, Math.round(t * 0.85));
+  });
+  ST.scores = j.scores;
+
+  const axes = ['strategic','financial','risk','execution','psychological'];
+  const axL  = {strategic:'STRATEGIC',financial:'FINANCIAL',risk:'RISK',execution:'EXECUTION',psychological:'PSYCHOLOGY'};
+  const best = ST.scores.reduce((a,b) => a.total>b.total?a:b);
+
+  const barsHtml = axes.map(ax => `
+    <div class="ax-row">
+      <div class="ax-head">
+        <span style="color:var(--txt2)">${axL[ax]}</span>
+        <div class="ax-vals">
+          ${ST.scores.map(s=>`<span class="av" style="color:${COLORS[s.id]}" title="${esc(s.axes[ax]?.reason||'')}">${s.id}:${s.axes[ax]?.score??'?'}</span>`).join('')}
+        </div>
+      </div>
+      <div class="bars">
+        ${ST.scores.map(s=>`<div class="bt"><div class="bf" style="width:${s.axes[ax]?.score||0}%;background:${COLORS[s.id]}"></div></div>`).join('')}
+      </div>
+    </div>`).join('');
+
+  const totalsHtml = `<div class="totals">
+    ${ST.scores.map(s=>`
+      <div class="tc ${s.id===best.id?'win':''}">
+        <div class="t-big" style="color:${COLORS[s.id]}">${s.total}</div>
+        <div class="t-sub">${s.id} ${s.id===best.id?'★ BEST':''}</div>
+        <div class="t-prob">成功確率 ${s.prob}%</div>
+      </div>`).join('')}
+  </div>`;
+
+  addCard('c4',4,'5-AXIS SCORING',
+    `<div style="font-size:9px;color:var(--txt2);margin-bottom:12px">
+      重み: Strategic 25% / Financial 20% / Risk 20% / Execution 20% / Psychology 15%<br>
+      スコアにマウスオーバーで根拠を表示
+    </div>
+    ${barsHtml}${totalsHtml}
+    <div class="chart-wrap">
+      <div style="font-size:9px;color:var(--txt2);margin-bottom:10px">RADAR CHART</div>
+      <canvas id="radarCanvas"></canvas>
+    </div>`
+  );
+
+  setTimeout(() => {
+    const ctx = document.getElementById('radarCanvas')?.getContext('2d');
+    if (!ctx) return;
+    if (chartInst) chartInst.destroy();
+    chartInst = new Chart(ctx, {
+      type: 'radar',
+      data: {
+        labels: ['Strategic','Financial','Risk','Execution','Psychology'],
+        datasets: ST.scores.map(s => ({
+          label: 'Strategy '+s.id,
+          data: axes.map(ax => s.axes[ax]?.score||0),
+          borderColor: COLORS[s.id],
+          backgroundColor: COLORS[s.id]+'15',
+          pointBackgroundColor: COLORS[s.id],
+          borderWidth: 2, pointRadius: 3
+        }))
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color:'#c0c8e0', font:{family:'Share Tech Mono', size:11} } } },
+        scales: { r: {
+          min:0, max:100,
+          grid: {color:'#1a1a2e'}, angleLines: {color:'#1a1a2e'},
+          pointLabels: {color:'#505078', font:{family:'Share Tech Mono', size:10}},
+          ticks: {color:'#252535', backdropColor:'transparent', stepSize:25}
+        }}
+      }
+    });
+  }, 300);
+
+  setPhase(4,'done');
+  setProgress(4);
+}
+
+// ── Phase 5: Devil's Advocate ──────────────────────
+async function phase5() {
+  setPhase(5,'active');
+  const best  = ST.scores.reduce((a,b) => a.total>b.total?a:b);
+  const bestS = ST.strats.find(s => s.id===best.id);
+  loadCard('c5',5,"DEVIL'S ADVOCATE",`Strategy ${best.id} を論破中`);
+
+  const raw = await callGemini(
+    'You output ONLY raw JSON. Never add markdown, code fences, or explanation.',
+    `You are a ruthless strategic skeptic. Attack this strategy mercilessly with specific Japanese critique.
+Do NOT use placeholder text.
+
+Target strategy: "${(bestS?.name||'').replace(/"/g,'\\"')}" (Score: ${best.total}/100)
+Goal: "${ST.goal.refinedGoal.replace(/"/g,'\\"')}"
+
+Respond with ONLY this JSON:
+{"targetId":"${best.id}","attacks":[{"angle":"財務","critique":"[具体的な数値を使った反論]"},{"angle":"市場","critique":"[具体的な反論]"},{"angle":"実行","critique":"[具体的な反論]"},{"angle":"外部環境","critique":"[具体的な反論]"}],"fatalFlaw":"[致命的な欠陥1文]","failureProbability":40,"failureTimeline":"[失敗が顕在化するタイミング]","worstCase":"[最悪のシナリオ1文]"}`
+  );
+
+  const j = safeJSON(raw);
+  if (!j?.attacks) throw new Error('Phase5 JSONパース失敗。生の応答:\n'+raw.slice(0,500));
+  ST.devil = j;
+
+  addCard('c5',5,"DEVIL'S ADVOCATE",
+    `<div class="d-head">⚠ TARGETING STRATEGY ${esc(j.targetId)} — ${j.failureProbability}% FAILURE PROBABILITY</div>
+    ${j.attacks.map(a=>`
+      <div class="d-atk">
+        <div class="d-angle">${esc(a.angle)}</div>
+        <div class="d-txt">${esc(a.critique)}</div>
+      </div>`).join('')}
+    <div class="fatal">
+      <div class="fatal-lbl">FATAL FLAW — ${esc(j.failureTimeline)}</div>
+      <div class="fatal-txt">${esc(j.fatalFlaw)}</div>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--txt2)">
+      WORST CASE: <span style="color:var(--r)">${esc(j.worstCase)}</span>
+    </div>`
+  );
+  setPhase(5,'done');
+  setProgress(5);
+}
+
+// ── Phase 6: Re-Evaluator (自律ループ) ────────────
+async function phase6() {
+  setPhase(6,'active');
+  loadCard('c6',6,'AUTONOMOUS RE-EVALUATION','スコアを自動補正中');
+  await sleep(300);
+
+  const tgt   = ST.devil.targetId;
+  const fp    = ST.devil.failureProbability || 40;
+  const pen   = fp > 60 ? 0.85 : fp > 40 ? 0.91 : 0.95;
+  const bonus = 1.025;
+
+  ST.final = ST.scores.map(s => {
+    const adj  = Math.min(99, Math.round(s.total * (s.id===tgt ? pen : bonus)));
+    const prob = Math.min(94, Math.round(adj * 0.84 - (fp>50?5:2)));
+    return {...s, adj, prob};
+  });
+
+  // auto-loop: narrow spread → apply discrimination
+  const vals   = ST.final.map(s => s.adj);
+  const spread = Math.max(...vals) - Math.min(...vals);
+  let note = '';
+  if (spread < 8) {
+    const sorted = [...ST.final].sort((a,b)=>b.adj-a.adj);
+    sorted[0].adj += 3;
+    sorted[2].adj -= 3;
+    note = `<div style="font-size:10px;color:var(--p);margin-top:10px">⟳ AUTO-LOOP: スコア差${spread}pt → 自動差別化補正を適用</div>`;
+  }
+
+  const winner = ST.final.reduce((a,b) => a.adj>b.adj?a:b);
+
+  addCard('c6',6,'AUTONOMOUS RE-EVALUATION',
+    `<div style="font-size:11px;color:var(--txt2);margin-bottom:14px">
+      Strategy ${tgt}: ×${pen} penalty (失敗確率${fp}%) &nbsp;|&nbsp; Others: ×${bonus} bonus
+    </div>
+    <div class="totals">
+      ${ST.final.map(s=>`
+        <div class="tc ${s.id===winner.id?'win':''}">
+          <div style="font-size:10px;color:var(--txt2);margin-bottom:3px">元: ${s.total}</div>
+          <div class="t-big" style="color:${COLORS[s.id]}">${s.adj}</div>
+          <div class="t-sub">${s.id} ${s.id===winner.id?'★ WINNER':''}</div>
+          <div class="t-prob">成功確率 ${s.prob}%</div>
+        </div>`).join('')}
+    </div>${note}`
+  );
+  setPhase(6,'done');
+  setProgress(6);
+}
+
+// ── Phase 7: Verdict ───────────────────────────────
+async function phase7() {
+  setPhase(7,'active');
+  const winner = ST.final.reduce((a,b) => a.adj>b.adj?a:b);
+  const winS   = ST.strats.find(s => s.id===winner.id);
+  loadCard('c7',7,'FINAL VERDICT','最終決断を生成中');
+
+  const raw = await callGemini(
+    'You output ONLY raw JSON. Never add markdown, code fences, or explanation.',
+    `You are a decisive strategic verdict AI. Write real, specific Japanese content. Do NOT use placeholder text.
+
+Winner: Strategy ${winner.id} "${(winS?.name||'').replace(/"/g,'\\"')}" (Score:${winner.adj}, P(success):${winner.prob}%)
+Goal: "${ST.goal.refinedGoal.replace(/"/g,'\\"')}"
+Fatal Risk: "${(ST.devil.fatalFlaw||'').replace(/"/g,'\\"')}"
+
+Respond with ONLY this JSON:
+{"verdict":"[命令形1文の最終決断。曖昧語禁止。具体的行動と数値を含む]","successProbability":${winner.prob},"reasons":["[数値根拠のある理由1]","[理由2]","[理由3]"],"firstAction":"[今日24時間以内に取るべき最小・最高レバレッジなアクション1文]","exitCriteria":"[この戦略を捨てるべき具体的な数値条件]"}`
+  );
+
+  const j = safeJSON(raw);
+  if (!j?.verdict) throw new Error('Phase7 JSONパース失敗。生の応答:\n'+raw.slice(0,500));
+
+  addCard('c7',7,'FINAL VERDICT',
+    `<div class="v-box">
+      <div class="v-circle">
+        <div class="v-num">${j.successProbability}%</div>
+        <div class="v-sub">SUCCESS</div>
+      </div>
+      <div class="v-txt">"${esc(j.verdict)}"</div>
+      <div class="v-reasons">
+        ${(j.reasons||[]).map(r=>`<div class="v-reason">${esc(r)}</div>`).join('')}
+      </div>
+      <div class="v-meta">
+        <div class="v-mbox" style="border-color:var(--g)40">
+          <div class="v-mlbl" style="color:var(--g)">FIRST ACTION / 24H</div>
+          <div class="v-mtxt">${esc(j.firstAction)}</div>
+        </div>
+        <div class="v-mbox" style="border-color:var(--r)40">
+          <div class="v-mlbl" style="color:var(--r)">EXIT CRITERIA</div>
+          <div class="v-mtxt" style="color:var(--txt2)">${esc(j.exitCriteria)}</div>
+        </div>
+      </div>
+    </div>`
+  );
+  setPhase(7,'done');
+  setProgress(7);
+}
+
+// ═══════════════════════════════════════════════════
+//  PHASE RETRY (individual phase)
+// ═══════════════════════════════════════════════════
+async function retryPhase(n) {
+  if (isRunning) return;
+  const phFns = [null, ()=>phase1($('prob').value.trim()), phase2, phase3, phase4, phase5, phase6, phase7];
+  if (!phFns[n]) return;
+
+  isRunning = true;
+  setDot('run');
+  setPhase(n,'active');
+  try {
+    await phFns[n]();
+    // continue from next phase
+    for (let i=n+1; i<=7; i++) {
+      showStatus(`Phase ${i}/7 を準備中...`, 'info');
+      await sleep(PHASE_GAP_MS);
+      hideStatus();
+      setPhase(i,'active');
+      await phFns[i]();
+    }
+    setDot('ok');
+    showStatus('✓ 分析完了', 'info');
+  } catch(e) {
+    showErrCard('c'+n, n, 'PHASE '+n, e.message);
+    setDot('err');
+  }
+  isRunning = false;
+}
+
+// ═══════════════════════════════════════════════════
+//  MAIN RUNNER
+// ═══════════════════════════════════════════════════
+async function runAPEX() {
+  if (isRunning) return;
+  const key   = $('apiKey').value.trim();
+  const input = $('prob').value.trim();
+  if (!key)   { showStatus('Gemini APIキーを入力してください → aistudio.google.com で取得','err'); $('status-bar').style.display='block'; return; }
+  if (!input) { showStatus('分析する問題・目標を入力してください','err'); $('status-bar').style.display='block'; return; }
+
+  clearAll();
+  isRunning = true;
+  $('runBtn').disabled = true;
+  $('runBtn').textContent = '◉ RUNNING...';
+  setDot('run');
+
+  const phases = [
+    {fn:()=>phase1(input), label:'GOAL REFINEMENT'},
+    {fn:phase2,            label:'DECOMPOSITION'},
+    {fn:phase3,            label:'STRATEGY GEN'},
+    {fn:phase4,            label:'SCORING'},
+    {fn:phase5,            label:"DEVIL'S ADVOCATE"},
+    {fn:phase6,            label:'RE-EVALUATION'},
+    {fn:phase7,            label:'FINAL VERDICT'},
+  ];
+
+  let ok = true;
+  for (let i=0; i<phases.length; i++) {
+    // inter-phase visual gap (rate limiting is handled proactively by rateGate)
+    if (i > 0) {
+      showStatus(`Phase ${i+1}/7: ${phases[i].label} を準備中...`, 'info');
+      await sleep(PHASE_GAP_MS);
+      hideStatus();
+    }
+    try {
+      await phases[i].fn();
+    } catch(e) {
+      showErrCard('c'+(i+1), i+1, phases[i].label, e.message);
+      showStatus(`⚠ Phase ${i+1} でエラー — カード内の「↺ RETRY」で再試行できます`, 'err');
+      setDot('err');
+      ok = false;
+      break;
+    }
+  }
+
+  if (ok) {
+    setDot('ok');
+    showStatus('✓ 全7フェーズ完了 — 最終決断を確認してください', 'info');
+  }
+
+  isRunning = false;
+  $('runBtn').disabled = false;
+  $('runBtn').textContent = '▶ ENGAGE APEX';
+}
+</script>
+</body>
+</html>
