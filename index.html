@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>APEX Ω – ULTIMA</title>
+<title>APEX Ω – ULTIMA (Groq)</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -92,7 +92,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 
   <div class="card">
     <h1>APEX Ω – ULTIMA</h1>
-    <input type="password" id="key" placeholder="Gemini API Key（保存されません）— aistudio.google.com で取得">
+    <input type="password" id="key" placeholder="Groq API Key（保存されません）— console.groq.com で無料取得">
     <textarea id="q" placeholder="意思決定・問題・戦略課題を入力..."></textarea>
     <button id="run_btn" class="main" onclick="run()">▶ 実行</button>
     <button class="ghost" onclick="clearCache()">キャッシュ削除</button>
@@ -126,10 +126,11 @@ button:disabled{opacity:.4;cursor:not-allowed}
 /* ─── CONFIG ──────────────────────────────────────────────
    2 API calls total per run → physically impossible to hit 15/min limit
    CALL_GAP enforces minimum spacing as a secondary safeguard             */
-const ENDPOINT  = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
-const CALL_GAP  = 9000;   // ms between calls (= max 6.7 req/min)
-const WAIT_429  = 95;     // s to wait on 429 before retry (Gemini window = ~90s)
-const MAX_RETRY = 2;      // max 429 retries per call
+const ENDPOINT  = 'https://api.groq.com/openai/v1/chat/completions';
+const MODEL     = 'llama-3.3-70b-versatile';
+const CALL_GAP  = 3000;   // 3s間隔 = 20/min → Groq 30RPMに余裕
+const WAIT_429  = 65;
+const MAX_RETRY = 2;
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
 const CACHE_MAX = 50;
 const PFX       = 'apex_';
@@ -255,7 +256,7 @@ function isPlaceholder(str) {
 }
 
 /* ─── API CALL (fixed-gap + 429 recovery) ────────────── */
-async function callGemini(prompt) {
+async function callAPI(prompt) {
   const key = el.key();
   if(!key) throw new Error('APIキーを入力してください');
 
@@ -276,12 +277,14 @@ async function callGemini(prompt) {
     try {
       const ctrl    = new AbortController();
       const timeout = setTimeout(() => ctrl.abort(), 30000);
-      res = await fetch(ENDPOINT + '?key=' + key, {
+      res = await fetch(ENDPOINT, {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
         body:    JSON.stringify({
-          contents:         [{ role:'user', parts:[{ text:prompt }] }],
-          generationConfig: { temperature:0.35, maxOutputTokens:2000 }
+          model: MODEL,
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.35,
+          max_tokens: 2000
         }),
         signal: ctrl.signal
       });
@@ -301,15 +304,10 @@ async function callGemini(prompt) {
     if(res.ok) {
       let data;
       try { data = JSON.parse(raw); } catch(_) {
-        throw new Error('Geminiの応答JSONが壊れています。再実行してください。');
+        throw new Error('応答JSONが壊れています。再実行してください。');
       }
-      const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      const reason = data?.candidates?.[0]?.finishReason || '';
-      if(!txt) {
-        if(reason === 'SAFETY')
-          throw new Error('セーフティフィルターでブロックされました。質問の表現を変えてください。');
-        throw new Error(`応答が空です (finishReason: ${reason || 'unknown'})`);
-      }
+      const txt = data?.choices?.[0]?.message?.content;
+      if(!txt) throw new Error('Groq応答が空です。再実行してください。');
       callCount++;
       el.meta.textContent = `このセッションのAPI呼び出し回数: ${callCount}`;
       return txt;
@@ -320,7 +318,7 @@ async function callGemini(prompt) {
     try { apiMsg = JSON.parse(raw).error?.message || apiMsg; } catch(_) {}
 
     if(res.status === 401 || res.status === 403)
-      throw new Error(`認証エラー (${res.status}) — aistudio.google.com でAPIキーを再確認してください`);
+      throw new Error(`認証エラー (${res.status}) — console.groq.com でAPIキーを再確認してください`);
 
     if(res.status === 429) {
       if(attempt < MAX_RETRY) {
@@ -348,8 +346,8 @@ async function run() {
   // validate inputs
   if(!key)
     return setStatus('APIキーを入力してください', 'err');
-  if(!key.startsWith('AIza') || key.length < 35)
-    return setStatus('キー形式エラー — AIzaSy... で始まる39文字のキーを確認してください', 'err');
+  if(!key.startsWith('gsk_') || key.length < 20)
+    return setStatus('キー形式エラー — gsk_ で始まるGroqキーを確認してください', 'err');
   if(!q)
     return setStatus('質問・問題を入力してください', 'err');
 
@@ -371,7 +369,7 @@ async function run() {
   try {
     /* ── CALL 1: 4エージェント同時分析（1回のAPIコールで取得）────────── */
     setStatus('1/2: 4エージェントが分析中...', '');
-    const raw1 = await callGemini(
+    const raw1 = await callAPI(
 `あなたは4つの専門的視点を持つ戦略AIです。
 以下の問いに対して、4つの視点それぞれで具体的な分析を行い、JSONのみで回答してください。
 マークダウン・コードブロック・説明文は一切不要です。JSONオブジェクトのみ出力してください。
@@ -394,7 +392,7 @@ async function run() {
       throw new Error('エージェント分析のJSONパースに失敗しました。\n\n応答の先頭: ' + raw1.slice(0, 200));
 
     if(['alpha','beta','gamma','delta'].some(k => isPlaceholder(agents[k])))
-      throw new Error('Geminiがテンプレート文をそのまま返しました。もう一度実行してください。');
+      throw new Error('テンプレート文がそのまま返されました。もう一度実行してください。');
 
     setText('el_a', agents.alpha);
     setText('el_b', agents.beta);
@@ -404,7 +402,7 @@ async function run() {
 
     /* ── CALL 2: Ω 統合判断 ──────────────────────────────────────────── */
     setStatus('2/2: Ω統合判断を生成中...', '');
-    const raw2 = await callGemini(
+    const raw2 = await callAPI(
 `以下の4つの専門的視点による分析を統合し、意思決定者が今日から行動できる統合判断を示してください。
 
 問い: ${q}
