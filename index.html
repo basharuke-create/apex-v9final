@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>APEX Ω – ULTIMA v2</title>
+<title>APEX Ω – ULTIMA v3</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -119,7 +119,7 @@ button:disabled{opacity:.35;cursor:not-allowed}
 
 <!-- ── INPUT ── -->
 <div class="card">
-  <div class="subtitle">APEX Ω – ULTIMA v2 · True Multi-Agent</div>
+  <div class="subtitle">APEX Ω – ULTIMA v3 · Web Search + Multi-Agent</div>
   <h1>戦略的意思決定エンジン</h1>
   <input type="password" id="key" placeholder="Groq API Key — console.groq.com で無料取得 (gsk_...)">
   <textarea id="q" placeholder="意思決定・戦略課題・問題を入力...&#10;例: 副業でYouTubeを始めるべきか。本業会社員、週10時間確保可、貯金200万。6ヶ月で月5万稼ぎたい。"></textarea>
@@ -188,13 +188,13 @@ button:disabled{opacity:.35;cursor:not-allowed}
 
 /* ── CONFIG ─────────────────────────────────────────── */
 const ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL    = 'llama-3.3-70b-versatile';
-const CALL_GAP = 3000;   // 3s間隔
+const MODEL    = 'compound-beta';  // Groq compound: LLM + Web検索内蔵、追加キー不要
+const CALL_GAP = 4000;
 const WAIT_429 = 65;
 const MAX_RETRY = 2;
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
 const CACHE_MAX = 40;
-const PFX = 'apexv2_';
+const PFX = 'apexv3_';
 
 /* ── STATE ──────────────────────────────────────────── */
 let running = false, lastCallAt = 0, callCount = 0, cdIv = null;
@@ -287,7 +287,7 @@ async function callAPI(systemPrompt, userPrompt) {
     let res, raw;
     try {
       const ctrl = new AbortController();
-      const tid  = setTimeout(()=>ctrl.abort(), 30000);
+      const tid  = setTimeout(()=>ctrl.abort(), 45000); // compound-betaは検索分遅い
       res = await fetch(ENDPOINT, {
         method:  'POST',
         headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+key },
@@ -298,7 +298,7 @@ async function callAPI(systemPrompt, userPrompt) {
             { role:'user',   content: userPrompt }
           ],
           temperature: 0.4,
-          max_tokens: 2500
+          max_tokens: 3000
         }),
         signal: ctrl.signal
       });
@@ -314,8 +314,16 @@ async function callAPI(systemPrompt, userPrompt) {
       try{ data=JSON.parse(raw); }catch(_){ throw new Error('応答JSONが壊れています'); }
       const txt = data?.choices?.[0]?.message?.content;
       if(!txt) throw new Error('応答が空です');
+
+      // compound-betaの検索ソースを抽出してSTに保存
+      const sources = data?.choices?.[0]?.message?.tool_calls
+        ?.filter(t=>t.type==='web_search')
+        ?.map(t=>{ try{ return JSON.parse(t.function?.arguments||'{}').query; }catch(_){return null;} })
+        ?.filter(Boolean) || [];
+      if(sources.length) ST.searchSources = (ST.searchSources||[]).concat(sources);
+
       callCount++;
-      $('meta').textContent = `API呼び出し回数: ${callCount}`;
+      $('meta').textContent = `API呼び出し: ${callCount}回${ST.searchSources?.length ? ` | Web検索: ${ST.searchSources.length}件` : ''}`;
       return txt;
     }
 
@@ -356,24 +364,25 @@ async function phase1(q) {
   $('decomp-body').innerHTML='<div class="loading-dots" style="color:var(--d)">分析中</div>';
 
   const raw = await callAPI(
-    `あなたは戦略的問題分解の専門家です。
-ユーザーの問いを5つの層で徹底的に分解し、表面的な質問の奥にある本質的な課題を明らかにします。
-必ずJSONのみで応答してください。コードブロックや説明文は一切不要です。`,
+    `あなたはWeb検索機能を持つ戦略アナリストです。
+必ず関連する最新情報をWeb検索してから分析してください。
+JSONのみで応答。コードブロック・前置き・後書き一切不要。`,
 
-    `以下の問いを深層分解してください。
+    `以下の問いについて、まずWeb検索で最新の関連情報・統計・事例を収集してから、深層分解してください。
 
 問い: ${q}
 
-各フィールドに具体的な日本語の分析を記述してください（テンプレート文禁止）。
+検索すべき情報の例：この問いに関連する最新統計、成功/失敗事例、業界動向、具体的な数値データ
+
+収集した実際の情報を使って、以下のJSONを埋めてください（すべてのフィールドに具体的な数値・事例・出典を含めること）:
 
 {
-  "surface": "表面的な問い（ユーザーが言っていること）",
-  "real_problem": "本当の問題（なぜこれを考えているのか）",
-  "hidden_assumption": "隠れた前提（暗黙的に信じていること）",
-  "success_definition": "成功の定義（何が達成されれば満足か）",
-  "core_tension": "コアな緊張（この問いに内在するトレードオフ・矛盾）",
-  "bottleneck": "最重要ボトルネック（これを解決すれば他が連鎖する1つの制約）",
-  "reframed": "問いの再定義（より正確な問いの立て方）"
+  "web_findings": "Web検索で得た最重要の事実・数値・事例（箇条書き、各項目に出典を示す）",
+  "real_problem": "検索結果を踏まえた、本当の問題の定義（数値・事例で裏付ける）",
+  "dangerous_assumption": "この問いに潜む最も危険な思い込み（検索で得た反証データを示す）",
+  "market_reality": "検索で判明した市場・業界の実態（成功率・平均値・最新トレンドなど具体的数値）",
+  "bottleneck": "データに基づく最重要ボトルネック（この制約を解除すれば他が連鎖する）",
+  "reframed": "検索結果を踏まえて再定義された、より正確な問い"
 }`
   );
 
@@ -381,9 +390,9 @@ async function phase1(q) {
   if(!j?.reframed) throw new Error('Phase1 パース失敗: '+raw.slice(0,200));
   ST.decomp = j;
 
-  const colors = {surface:'#8892b0',real_problem:'#00c8ff',hidden_assumption:'#f5c400',success_definition:'#00ffaa',core_tension:'#ff5e5e',bottleneck:'#b57bff',reframed:'#00ffaa'};
-  const labels = {surface:'表層',real_problem:'真の問題',hidden_assumption:'隠れた前提',success_definition:'成功の定義',core_tension:'コアな緊張',bottleneck:'ボトルネック',reframed:'問いの再定義'};
-  const keys   = ['surface','real_problem','hidden_assumption','success_definition','core_tension','bottleneck','reframed'];
+  const colors = {web_findings:'#00c8ff',real_problem:'#00ffaa',dangerous_assumption:'#f5c400',market_reality:'#b57bff',bottleneck:'#ff5e5e',reframed:'#00ffaa'};
+  const labels = {web_findings:'🌐 Web検索結果',real_problem:'真の問題',dangerous_assumption:'危険な思い込み',market_reality:'市場の実態',bottleneck:'ボトルネック',reframed:'再定義された問い'};
+  const keys   = ['web_findings','real_problem','dangerous_assumption','market_reality','bottleneck','reframed'];
 
   $('decomp-body').innerHTML = keys.map(k=>`
     <div class="decomp-row">
@@ -410,47 +419,45 @@ async function phase2() {
   });
 
   const raw = await callAPI(
-    `あなたは4人の全く異なるペルソナを持つ専門家AIです。
-各ペルソナは独立した思考スタイルと価値観を持ち、同じ問題に対して異なる結論を出すことがあります。
-必ずJSONのみで応答してください。コードブロック・説明文は一切不要です。`,
+    `あなたはWeb検索機能を持つ4人の独立した専門家AIです。
+各エージェントは自身の専門領域に関連する最新情報をWeb検索してから分析します。
+JSONのみで応答。コードブロック・説明文一切不要。`,
 
-    `以下の問いに対して、4つの独立したペルソナでそれぞれ分析してください。
+    `以下の問いを、4つの専門家ペルソナでそれぞれ分析してください。
+各エージェントは必ず関連するWeb検索を行い、実際のデータ・事例・数値を使って分析すること。
 
 元の問い: ${$('q').value.trim()}
-再定義された問い: ${ST.decomp.reframed}
+再定義: ${ST.decomp.reframed}
+市場実態: ${ST.decomp.market_reality}
 ボトルネック: ${ST.decomp.bottleneck}
-コアな緊張: ${ST.decomp.core_tension}
+Web検索結果: ${ST.decomp.web_findings}
 
-【重要】各エージェントは完全に独立した視点を持ち、互いに矛盾する結論を出してよい。具体的な数値・事例・根拠を含めること。
+各エージェントは互いに矛盾する結論を出してよい。「〜が重要」等の抽象表現禁止。具体的な数値・固有名詞・因果関係を必ず含めること。
 
 {
   "alpha": {
-    "persona": "元McKinseyの戦略コンサルタント。競争優位・市場ポジショニング・スケールを重視。ROIで考える。",
-    "analysis": "競争戦略・市場・スケールの観点からの詳細分析（200字以上）",
-    "recommendation": "このペルソナとしての具体的な推奨アクション",
+    "analysis": "競争戦略・市場ポジショニング視点。検索で得た競合データ・市場規模・成功事例を使って分析（200字以上）",
+    "recommendation": "具体的な推奨アクション（数値目標・期限・方法を含む）",
     "confidence": 75,
-    "stance": "GO / WAIT / NO-GO のどれか1つ + 一言理由"
+    "stance": "GO/WAIT/NO-GOのどれか + 数値根拠のある一言"
   },
   "beta": {
-    "persona": "元AmazonのGMO。実行・オペレーション・リソース配分のプロ。Working backwardsで考える。",
-    "analysis": "実行可能性・リソース・優先順位の観点からの詳細分析（200字以上）",
-    "recommendation": "このペルソナとしての具体的な推奨アクション",
+    "analysis": "実行・リソース・コスト視点。検索で得た実際のコスト・工数・ツール情報を使って分析（200字以上）",
+    "recommendation": "具体的な推奨アクション（数値目標・期限・方法を含む）",
     "confidence": 70,
-    "stance": "GO / WAIT / NO-GO のどれか1つ + 一言理由"
+    "stance": "GO/WAIT/NO-GOのどれか + 数値根拠のある一言"
   },
   "gamma": {
-    "persona": "リスク管理の専門家。最悪ケースと反論を徹底的に探す。楽観論を常に疑う。",
-    "analysis": "リスク・盲点・失敗シナリオの観点からの詳細分析（200字以上）",
-    "recommendation": "このペルソナとしての具体的な推奨アクション",
+    "analysis": "リスク・失敗事例視点。検索で得た実際の失敗率・落とし穴・競合の失敗事例を使って反論（200字以上）",
+    "recommendation": "具体的な推奨アクション（数値目標・期限・方法を含む）",
     "confidence": 60,
-    "stance": "GO / WAIT / NO-GO のどれか1つ + 一言理由"
+    "stance": "GO/WAIT/NO-GOのどれか + 数値根拠のある一言"
   },
   "delta": {
-    "persona": "第一原理思考の哲学者。「なぜ」を繰り返し、本質と構造を暴く。常識を疑う。",
-    "analysis": "本質・構造・第一原理の観点からの詳細分析（200字以上）",
-    "recommendation": "このペルソナとしての具体的な推奨アクション",
+    "analysis": "第一原理・構造視点。「なぜ今これをするのか」を検索で得たトレンドデータから逆算して分析（200字以上）",
+    "recommendation": "具体的な推奨アクション（数値目標・期限・方法を含む）",
     "confidence": 65,
-    "stance": "GO / WAIT / NO-GO のどれか1つ + 一言理由"
+    "stance": "GO/WAIT/NO-GOのどれか + 数値根拠のある一言"
   }
 }`
   );
@@ -475,18 +482,4 @@ async function phase2() {
 /* ══════════════════════════════════════════════════════
    PHASE 3 — Ω 統合・最終決断（エージェント間の対立を統合）
 ══════════════════════════════════════════════════════ */
-async function phase3() {
-  setPhase(3,'active');
-  setStatus('Phase 3: Ω が4エージェントの意見を統合・最終決断中...', '');
-  $('verdict-card').style.display='block';
-  $('verdict-body').innerHTML='<div class="loading-dots" style="color:var(--d)">最終判断を生成中</div>';
-
-  const a = ST.agents;
-  const raw = await callAPI(
-    `あなたはΩ——4つのエージェントの意見を統合する最高意思決定AIです。
-各エージェントの主張を批判的に評価し、対立を解消して最終決断を下します。
-必ずJSONのみで応答してください。コードブロック・説明文は一切不要です。`,
-
-    `4つの専門家エージェントの分析を統合し、最終決断を下してください。
-
-【問いの再定義】${ST.decomp.reframed}
+async function phase3()
