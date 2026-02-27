@@ -3,447 +3,490 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>APEX Ω – ULTIMA (Groq)</title>
+<title>APEX Ω – ULTIMA v2</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#05050a;--card:#0d0d18;--border:#1a1a2e;
-  --g:#00ffaa;--r:#ff5e5e;--t:#cfd8ff;--d:#8892b0;--y:#f5c400;
-  --g-dim:rgba(0,255,170,.06);--g-border:rgba(0,255,170,.35);
-  --r-dim:rgba(255,94,94,.06);--r-border:rgba(255,94,94,.35);
-  --y-dim:rgba(245,196,0,.06);--y-border:rgba(245,196,0,.35);
+  --g:#00ffaa;--r:#ff5e5e;--t:#cfd8ff;--d:#8892b0;--y:#f5c400;--p:#b57bff;
+  --g-dim:rgba(0,255,170,.06);--g-b:rgba(0,255,170,.3);
+  --r-dim:rgba(255,94,94,.06);--r-b:rgba(255,94,94,.3);
+  --y-dim:rgba(245,196,0,.06);--y-b:rgba(245,196,0,.3);
+  --p-dim:rgba(181,123,255,.06);--p-b:rgba(181,123,255,.3);
 }
-body{
-  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  background:radial-gradient(circle at top,#16162a 0,#05050a 60%);
-  color:var(--t);padding:16px;
-}
-.shell{max-width:1100px;margin:auto}
-.card{
-  background:var(--card);border:1px solid var(--border);
-  border-radius:14px;padding:14px;margin-bottom:14px;
-  box-shadow:0 20px 50px rgba(0,0,0,.6);
-}
-h1{font-size:1.2rem;margin-bottom:8px}
-textarea{
-  width:100%;min-height:90px;
-  background:#070712;color:var(--t);
-  border:1px solid var(--border);border-radius:10px;
-  padding:10px;resize:vertical;font-size:.9rem;
-}
-textarea:focus,input:focus{outline:none;border-color:rgba(0,255,170,.4)}
-input{
-  width:100%;padding:8px;margin-top:6px;
-  border-radius:8px;border:1px solid #333;
-  background:#070712;color:#fff;font-size:.9rem;
-  transition:border-color .2s;
-}
-button{
-  border:none;border-radius:999px;
-  padding:8px 18px;margin-top:8px;
-  cursor:pointer;font-weight:600;font-size:.85rem;
-  transition:opacity .2s;
-}
-button:disabled{opacity:.4;cursor:not-allowed}
-.main{background:linear-gradient(135deg,#00ffaa,#4df3ff);color:#000}
-.ghost{background:transparent;border:1px solid #333;color:#aaa;margin-left:8px}
-.ghost:hover:not(:disabled){border-color:#666;color:#ccc}
+body{font-family:system-ui,-apple-system,sans-serif;background:radial-gradient(circle at top,#16162a 0,#05050a 65%);color:var(--t);padding:16px}
+.shell{max-width:900px;margin:auto}
 
-.status{
-  font-size:.8rem;margin-top:8px;padding:7px 11px;
-  border-radius:7px;min-height:32px;line-height:1.5;
-  border:1px solid transparent;
-}
-.status.ok  {color:var(--g);background:var(--g-dim);border-color:var(--g-border)}
-.status.warn{color:var(--y);background:var(--y-dim);border-color:var(--y-border)}
-.status.err {color:var(--r);background:var(--r-dim);border-color:var(--r-border)}
+/* ── cards ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
 
-#cd-wrap{
-  display:none;align-items:center;gap:10px;
-  margin-top:8px;font-size:.8rem;color:var(--d);
-}
-#cd-wrap.show{display:flex}
-#cd-num{font-weight:700;color:var(--y);min-width:32px}
-#cd-track{flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
-#cd-fill{height:3px;background:var(--y)}
+/* ── inputs ── */
+h1{font-size:1.1rem;font-weight:700;margin-bottom:12px;letter-spacing:.03em}
+.subtitle{font-size:.72rem;color:var(--d);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px}
+input,textarea{width:100%;background:#070712;color:var(--t);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:.88rem;transition:border-color .2s}
+input{margin-top:6px}
+textarea{min-height:88px;resize:vertical;margin-top:8px}
+input:focus,textarea:focus{outline:none;border-color:var(--g-b)}
+button{border:none;border-radius:999px;padding:9px 20px;margin-top:10px;cursor:pointer;font-weight:700;font-size:.82rem;letter-spacing:.03em;transition:all .2s}
+button:disabled{opacity:.35;cursor:not-allowed}
+.btn-run{background:linear-gradient(135deg,#00ffaa,#4df3ff);color:#000}
+.btn-run:hover:not(:disabled){box-shadow:0 0 20px rgba(0,255,170,.4)}
+.btn-ghost{background:transparent;border:1px solid #333;color:#888;margin-left:8px}
+.btn-ghost:hover:not(:disabled){border-color:#666;color:#ccc}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:10px}
-.agent{background:#080814;border:1px solid #1e1e30;padding:10px;border-radius:10px;min-height:80px}
-.agent-title{font-size:.72rem;letter-spacing:.1em;margin-bottom:6px;color:var(--d);text-transform:uppercase}
-.agent-body{font-size:.85rem;white-space:pre-wrap;line-height:1.65;color:var(--t)}
-.agent-body:empty::after,.agent-body.loading::after{
-  content:'—';color:var(--d);
-}
-.agent-body.loading::after{content:'';animation:dots 1.2s infinite}
-@keyframes dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}100%{content:''}}
+/* ── status / countdown ── */
+.status{font-size:.78rem;margin-top:10px;padding:8px 12px;border-radius:8px;min-height:34px;line-height:1.6;border:1px solid transparent}
+.status.ok  {color:var(--g);background:var(--g-dim);border-color:var(--g-b)}
+.status.warn{color:var(--y);background:var(--y-dim);border-color:var(--y-b)}
+.status.err {color:var(--r);background:var(--r-dim);border-color:var(--r-b)}
+#cd{display:none;align-items:center;gap:10px;margin-top:8px;font-size:.78rem;color:var(--d)}
+#cd.show{display:flex}
+#cd-n{font-weight:700;color:var(--y);min-width:28px;text-align:right}
+#cd-t{flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+#cd-f{height:3px;background:var(--y)}
 
-.omega{
-  margin-top:12px;
-  border:1px solid var(--g-border);
-  padding:14px;border-radius:10px;
-  background:var(--g-dim);
-}
-.omega .agent-title{color:var(--g)}
-.meta{font-size:.72rem;color:#444;margin-top:10px}
+/* ── phase strip ── */
+#phases{display:flex;gap:6px;margin-top:14px;flex-wrap:wrap}
+.ph{font-size:.68rem;letter-spacing:.1em;padding:4px 10px;border-radius:999px;border:1px solid var(--border);color:var(--d);transition:.3s}
+.ph.active{border-color:var(--y-b);color:var(--y);background:var(--y-dim)}
+.ph.done{border-color:var(--g-b);color:var(--g);background:var(--g-dim)}
+.ph.err{border-color:var(--r-b);color:var(--r)}
+
+/* ── decompose block ── */
+#decomp-card{display:none}
+.decomp-row{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start}
+.decomp-tag{font-size:.65rem;letter-spacing:.1em;padding:3px 8px;border-radius:4px;white-space:nowrap;flex-shrink:0;margin-top:2px}
+.decomp-q{font-size:.75rem;color:var(--d);margin-bottom:3px}
+.decomp-a{font-size:.85rem;line-height:1.65}
+.bottleneck{border:1px solid var(--p-b);border-radius:8px;background:var(--p-dim);padding:12px;margin-top:12px}
+.bottleneck-lbl{font-size:.68rem;letter-spacing:.1em;color:var(--p);margin-bottom:5px}
+
+/* ── agent grid ── */
+#agents-card{display:none}
+.agent-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.agent-box{border-radius:10px;padding:12px;border:1px solid}
+.agent-box.alpha{border-color:rgba(0,200,255,.3);background:rgba(0,200,255,.04)}
+.agent-box.beta {border-color:rgba(0,255,170,.3);background:rgba(0,255,170,.04)}
+.agent-box.gamma{border-color:rgba(255,94,94,.3); background:rgba(255,94,94,.04)}
+.agent-box.delta{border-color:rgba(181,123,255,.3);background:rgba(181,123,255,.04)}
+.agent-name{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px;font-weight:700}
+.agent-role{font-size:.65rem;color:var(--d);margin-bottom:8px}
+.agent-box.alpha .agent-name{color:#00c8ff}
+.agent-box.beta  .agent-name{color:var(--g)}
+.agent-box.gamma .agent-name{color:var(--r)}
+.agent-box.delta .agent-name{color:var(--p)}
+.agent-body{font-size:.84rem;line-height:1.7;white-space:pre-wrap}
+.agent-stance{font-size:.72rem;margin-top:8px;padding:6px 8px;border-radius:5px;background:rgba(255,255,255,.04);color:var(--d)}
+
+/* ── verdict ── */
+#verdict-card{display:none}
+.verdict-box{border:1px solid var(--g-b);border-radius:12px;background:var(--g-dim);padding:20px}
+.verdict-prob{text-align:center;margin-bottom:18px}
+.v-circle{width:88px;height:88px;border-radius:50%;border:2px solid var(--g);margin:0 auto 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 0 30px rgba(0,255,170,.2)}
+.v-big{font-size:26px;font-weight:900;color:var(--g);line-height:1}
+.v-sub{font-size:.6rem;color:var(--d);letter-spacing:.12em}
+.verdict-text{font-size:1rem;font-weight:700;line-height:1.6;color:var(--g);text-align:center;margin-bottom:18px;font-style:italic}
+.verdict-section{margin-bottom:14px}
+.vs-label{font-size:.65rem;letter-spacing:.12em;color:var(--d);text-transform:uppercase;margin-bottom:6px}
+.vs-item{font-size:.84rem;line-height:1.7;padding:5px 0;border-bottom:1px solid var(--border)}
+.vs-item:last-child{border:none}
+.vs-item::before{content:'→ ';color:var(--g)}
+.verdict-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.vm-box{border:1px solid var(--border);border-radius:8px;padding:12px}
+.vm-label{font-size:.65rem;letter-spacing:.1em;margin-bottom:5px}
+.vm-text{font-size:.82rem;line-height:1.6}
+.vm-box.action .vm-label{color:var(--g)}
+.vm-box.exit   .vm-label{color:var(--r)}
+.consensus-bar{margin-top:14px;border:1px solid var(--border);border-radius:8px;padding:12px}
+.cb-label{font-size:.65rem;letter-spacing:.1em;color:var(--d);margin-bottom:8px}
+.cb-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:.78rem}
+.cb-name{width:55px;color:var(--d)}
+.cb-track{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.cb-fill{height:5px;border-radius:3px;transition:width 1s ease}
+.cb-val{width:30px;text-align:right;font-weight:700}
+
+/* ── loading dots ── */
+.loading-dots::after{content:'';animation:ldots 1.2s infinite}
+@keyframes ldots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}100%{content:''}}
+
+/* ── util ── */
+.section-label{font-size:.68rem;letter-spacing:.15em;color:var(--d);text-transform:uppercase;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.meta{font-size:.7rem;color:#444;margin-top:10px}
 </style>
 </head>
 <body>
 <div class="shell">
 
-  <div class="card">
-    <h1>APEX Ω – ULTIMA</h1>
-    <input type="password" id="key" placeholder="Groq API Key（保存されません）— console.groq.com で無料取得">
-    <textarea id="q" placeholder="意思決定・問題・戦略課題を入力..."></textarea>
-    <button id="run_btn" class="main" onclick="run()">▶ 実行</button>
-    <button class="ghost" onclick="clearCache()">キャッシュ削除</button>
-    <div id="status" class="status"></div>
-    <div id="cd-wrap">
-      <span>待機中</span>
-      <span id="cd-num"></span>
-      <span>秒</span>
-      <div id="cd-track"><div id="cd-fill"></div></div>
-    </div>
+<!-- ── INPUT ── -->
+<div class="card">
+  <div class="subtitle">APEX Ω – ULTIMA v2 · True Multi-Agent</div>
+  <h1>戦略的意思決定エンジン</h1>
+  <input type="password" id="key" placeholder="Groq API Key — console.groq.com で無料取得 (gsk_...)">
+  <textarea id="q" placeholder="意思決定・戦略課題・問題を入力...&#10;例: 副業でYouTubeを始めるべきか。本業会社員、週10時間確保可、貯金200万。6ヶ月で月5万稼ぎたい。"></textarea>
+  <div>
+    <button class="btn-run" id="run_btn" onclick="run()">▶ 分析開始</button>
+    <button class="btn-ghost" onclick="clearAll()">リセット</button>
+    <button class="btn-ghost" onclick="clearCache()">キャッシュ削除</button>
   </div>
-
-  <div class="card">
-    <div class="grid">
-      <div class="agent"><div class="agent-title">α 戦略</div><div id="el_a" class="agent-body"></div></div>
-      <div class="agent"><div class="agent-title">β 実務</div><div id="el_b" class="agent-body"></div></div>
-      <div class="agent"><div class="agent-title">γ 批評</div><div id="el_c" class="agent-body"></div></div>
-      <div class="agent"><div class="agent-title">δ 原理</div><div id="el_d" class="agent-body"></div></div>
-    </div>
-    <div class="omega">
-      <div class="agent-title">Ω 統合判断</div>
-      <div id="el_o" class="agent-body"></div>
-    </div>
-    <div class="meta" id="meta"></div>
+  <div id="status" class="status"></div>
+  <div id="cd"><span>待機中</span><span id="cd-n">—</span><span>秒</span><div id="cd-t"><div id="cd-f"></div></div></div>
+  <div id="phases">
+    <div class="ph" id="ph1">① 問題分解</div>
+    <div class="ph" id="ph2">② 4エージェント分析</div>
+    <div class="ph" id="ph3">③ Ω統合・最終決断</div>
   </div>
-
 </div>
+
+<!-- ── DECOMPOSE ── -->
+<div class="card" id="decomp-card">
+  <div class="section-label">Phase 1 — 問題の深層分解</div>
+  <div id="decomp-body"></div>
+</div>
+
+<!-- ── AGENTS ── -->
+<div class="card" id="agents-card">
+  <div class="section-label">Phase 2 — 4エージェント独立分析</div>
+  <div class="agent-grid">
+    <div class="agent-box alpha">
+      <div class="agent-name">α ストラテジスト</div>
+      <div class="agent-role">元McKinsey / 競争戦略・市場分析の専門家</div>
+      <div id="ag-a" class="agent-body"></div>
+      <div id="st-a" class="agent-stance"></div>
+    </div>
+    <div class="agent-box beta">
+      <div class="agent-name">β オペレーター</div>
+      <div class="agent-role">元Amazon / 実行・リソース最適化の専門家</div>
+      <div id="ag-b" class="agent-body"></div>
+      <div id="st-b" class="agent-stance"></div>
+    </div>
+    <div class="agent-box gamma">
+      <div class="agent-name">γ デビルズアドボケイト</div>
+      <div class="agent-role">リスク管理 / 反論・欠陥発見の専門家</div>
+      <div id="ag-c" class="agent-body"></div>
+      <div id="st-c" class="agent-stance"></div>
+    </div>
+    <div class="agent-box delta">
+      <div class="agent-name">δ フィロソファー</div>
+      <div class="agent-role">第一原理思考 / 本質・構造分析の専門家</div>
+      <div id="ag-d" class="agent-body"></div>
+      <div id="st-d" class="agent-stance"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── VERDICT ── -->
+<div class="card" id="verdict-card">
+  <div class="section-label">Phase 3 — Ω 最終統合判断</div>
+  <div id="verdict-body"></div>
+</div>
+
+<div class="meta" id="meta"></div>
+
+</div><!-- /shell -->
 <script>
 'use strict';
 
-/* ─── CONFIG ──────────────────────────────────────────────
-   2 API calls total per run → physically impossible to hit 15/min limit
-   CALL_GAP enforces minimum spacing as a secondary safeguard             */
-const ENDPOINT  = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL     = 'llama-3.3-70b-versatile';
-const CALL_GAP  = 3000;   // 3s間隔 = 20/min → Groq 30RPMに余裕
-const WAIT_429  = 65;
+/* ── CONFIG ─────────────────────────────────────────── */
+const ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
+const MODEL    = 'llama-3.3-70b-versatile';
+const CALL_GAP = 3000;   // 3s間隔
+const WAIT_429 = 65;
 const MAX_RETRY = 2;
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
-const CACHE_MAX = 50;
-const PFX       = 'apex_';
+const CACHE_MAX = 40;
+const PFX = 'apexv2_';
 
-/* ─── STATE ───────────────────────────────────────────── */
-let running    = false;
-let lastCallAt = 0;
-let callCount  = 0;
-let cdInterval = null;
+/* ── STATE ──────────────────────────────────────────── */
+let running = false, lastCallAt = 0, callCount = 0, cdIv = null;
+let ST = {};
 
-/* ─── DOM ─────────────────────────────────────────────── */
-const $  = id => document.getElementById(id);
-const el = {
-  key:    () => $('key').value.trim(),
-  q:      () => $('q').value.trim().replace(/[<>]/g,''),
-  status: $('status'),
-  meta:   $('meta'),
-  btn:    $('run_btn'),
-  agents: { a:'el_a', b:'el_b', c:'el_c', d:'el_d', o:'el_o' }
+/* ── DOM ─────────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+const setStatus = (msg, type='') => {
+  const s = $('status');
+  s.textContent = msg;
+  s.className = 'status' + (type ? ' '+type : '');
+};
+const setPhase = (n, state) => {
+  const e = $('ph'+n);
+  if(e) e.className = 'ph ' + state;
 };
 
-function setStatus(msg, type='') {
-  el.status.textContent = msg;
-  el.status.className   = 'status' + (type ? ' '+type : '');
-}
-
-function setLoading(id) {
-  $(id).textContent = '';
-  $(id).className   = 'agent-body loading';
-}
-function setText(id, txt) {
-  $(id).textContent = txt || '';
-  $(id).className   = 'agent-body';
-}
-
-/* ─── COUNTDOWN ───────────────────────────────────────── */
 function startCd(sec) {
-  const wrap = $('cd-wrap'), num = $('cd-num'), fill = $('cd-fill');
-  if(cdInterval) clearInterval(cdInterval);
-  wrap.classList.add('show');
+  const f = $('cd-f');
+  if(cdIv) clearInterval(cdIv);
+  $('cd').classList.add('show');
   let r = sec;
-  num.textContent = r;
-  fill.style.transition = 'none';
-  fill.style.width = '100%';
-  void fill.offsetWidth;
-  fill.style.transition = `width ${sec}s linear`;
-  fill.style.width = '0%';
-  cdInterval = setInterval(() => {
-    r--;
-    num.textContent = Math.max(0, r);
-    if(r <= 0) stopCd();
-  }, 1000);
+  $('cd-n').textContent = r;
+  f.style.transition = 'none'; f.style.width = '100%';
+  void f.offsetWidth;
+  f.style.transition = `width ${sec}s linear`; f.style.width = '0%';
+  cdIv = setInterval(() => { r--; $('cd-n').textContent = Math.max(0,r); if(r<=0) stopCd(); }, 1000);
 }
 function stopCd() {
-  if(cdInterval) { clearInterval(cdInterval); cdInterval = null; }
-  $('cd-wrap').classList.remove('show');
+  if(cdIv){ clearInterval(cdIv); cdIv=null; }
+  $('cd').classList.remove('show');
 }
 
-/* ─── CACHE ───────────────────────────────────────────── */
-function cacheGet(k) {
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ── CACHE ──────────────────────────────────────────── */
+const cacheGet = k => {
   try {
-    const raw = localStorage.getItem(k);
-    if(!raw) return null;
-    const d = JSON.parse(raw);
-    if(Date.now() - d.t > CACHE_TTL) { localStorage.removeItem(k); return null; }
-    d.last = Date.now();
-    localStorage.setItem(k, JSON.stringify(d));
+    const d = JSON.parse(localStorage.getItem(k)||'null');
+    if(!d || Date.now()-d.t > CACHE_TTL){ localStorage.removeItem(k); return null; }
+    d.last = Date.now(); localStorage.setItem(k, JSON.stringify(d));
     return d.v;
-  } catch(_) { return null; }
-}
-function cacheSet(k, v) {
+  } catch(_){ return null; }
+};
+const cacheSet = (k,v) => {
   try {
-    const keys = Object.keys(localStorage).filter(x => x.startsWith(PFX));
-    if(keys.length >= CACHE_MAX) {
-      const oldest = keys
-        .map(k => [k, (JSON.parse(localStorage.getItem(k)) || {last:0}).last])
-        .sort((a,b) => a[1]-b[1])[0][0];
-      localStorage.removeItem(oldest);
+    const keys = Object.keys(localStorage).filter(x=>x.startsWith(PFX));
+    if(keys.length >= CACHE_MAX){
+      const old = keys.map(k=>[k,(JSON.parse(localStorage.getItem(k))||{last:0}).last]).sort((a,b)=>a[1]-b[1])[0][0];
+      localStorage.removeItem(old);
     }
-    localStorage.setItem(k, JSON.stringify({ t:Date.now(), last:Date.now(), v }));
-  } catch(_) {}
-}
-function clearCache() {
-  Object.keys(localStorage).filter(k => k.startsWith(PFX)).forEach(k => localStorage.removeItem(k));
-  setStatus('キャッシュを削除しました', 'ok');
-}
+    localStorage.setItem(k, JSON.stringify({t:Date.now(),last:Date.now(),v}));
+  } catch(_){}
+};
+const clearCache = () => {
+  Object.keys(localStorage).filter(k=>k.startsWith(PFX)).forEach(k=>localStorage.removeItem(k));
+  setStatus('キャッシュを削除しました','ok');
+};
 
-/* ─── JSON PARSER (4-stage repair) ───────────────────── */
+/* ── JSON PARSER ─────────────────────────────────────── */
 function safeJSON(text) {
   if(!text) return null;
   const strip = s => s.replace(/^```(?:json)?\s*/im,'').replace(/\s*```\s*$/,'').trim();
-  // Stage 1: direct
-  try { return JSON.parse(text); } catch(_) {}
-  // Stage 2: strip markdown fences
-  try { return JSON.parse(strip(text)); } catch(_) {}
-  // Stage 3: extract outermost {...}
+  try{ return JSON.parse(text); }catch(_){}
+  try{ return JSON.parse(strip(text)); }catch(_){}
   const m = text.match(/\{[\s\S]*\}/);
-  if(m) {
-    try { return JSON.parse(m[0]); } catch(_) {}
-    // Stage 4: fix trailing commas + unquoted keys
-    try {
-      return JSON.parse(
-        m[0]
-          .replace(/,\s*([}\]])/g, '$1')
-          .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":')
-      );
-    } catch(_) {}
+  if(m){
+    try{ return JSON.parse(m[0]); }catch(_){}
+    try{ return JSON.parse(m[0].replace(/,\s*([}\]])/g,'$1').replace(/([{,]\s*)(\w+)\s*:/g,'$1"$2":"')); }catch(_){}
   }
-  console.warn('[APEX] safeJSON failed. Raw text:', text.slice(0, 400));
   return null;
 }
 
-/* ─── VALIDATE: ensure Gemini filled in real content ─── */
-// These are the template strings we sent — if returned unchanged, it's a failure
-const PLACEHOLDERS = [
-  '戦略的視点からの分析',
-  '実務的視点からの分析',
-  '批評的視点からの分析',
-  '原理的視点からの分析',
-];
-function isPlaceholder(str) {
-  return PLACEHOLDERS.some(p => str.trim() === p || str.trim().startsWith(p + '（'));
-}
-
-/* ─── API CALL (fixed-gap + 429 recovery) ────────────── */
-async function callAPI(prompt) {
-  const key = el.key();
+/* ── API CALL ────────────────────────────────────────── */
+async function callAPI(systemPrompt, userPrompt) {
+  const key = $('key').value.trim();
   if(!key) throw new Error('APIキーを入力してください');
 
-  // enforce minimum interval between calls
   const gap = CALL_GAP - (Date.now() - lastCallAt);
-  if(gap > 0) {
-    const s = Math.ceil(gap / 1000);
-    setStatus(`⏳ 次のリクエストまで ${s}秒待機 (レート制限対策)`, 'warn');
+  if(gap > 0){
+    const s = Math.ceil(gap/1000);
+    setStatus(`⏳ ${s}秒待機中...`, 'warn');
     startCd(s);
-    await new Promise(r => setTimeout(r, gap));
+    await new Promise(r=>setTimeout(r,gap));
     stopCd();
   }
 
-  for(let attempt = 0; attempt <= MAX_RETRY; attempt++) {
+  for(let attempt=0; attempt<=MAX_RETRY; attempt++){
     lastCallAt = Date.now();
     let res, raw;
-
     try {
-      const ctrl    = new AbortController();
-      const timeout = setTimeout(() => ctrl.abort(), 30000);
+      const ctrl = new AbortController();
+      const tid  = setTimeout(()=>ctrl.abort(), 30000);
       res = await fetch(ENDPOINT, {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-        body:    JSON.stringify({
+        headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+key },
+        body: JSON.stringify({
           model: MODEL,
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.35,
-          max_tokens: 2000
+          messages: [
+            { role:'system', content: systemPrompt },
+            { role:'user',   content: userPrompt }
+          ],
+          temperature: 0.4,
+          max_tokens: 2500
         }),
         signal: ctrl.signal
       });
-      clearTimeout(timeout);
+      clearTimeout(tid);
       raw = await res.text();
-    } catch(e) {
-      // network / timeout error
-      if(attempt < MAX_RETRY) {
-        setStatus(`ネットワークエラー — 5秒後に再試行 (${attempt+1}/${MAX_RETRY})`, 'warn');
-        await new Promise(r => setTimeout(r, 5000));
-        continue;
-      }
-      throw new Error('ネットワーク接続エラー: ' + e.message);
+    } catch(e){
+      if(attempt < MAX_RETRY){ await new Promise(r=>setTimeout(r,4000)); continue; }
+      throw new Error('ネットワークエラー: '+e.message);
     }
 
-    // ── success ──
-    if(res.ok) {
+    if(res.ok){
       let data;
-      try { data = JSON.parse(raw); } catch(_) {
-        throw new Error('応答JSONが壊れています。再実行してください。');
-      }
+      try{ data=JSON.parse(raw); }catch(_){ throw new Error('応答JSONが壊れています'); }
       const txt = data?.choices?.[0]?.message?.content;
-      if(!txt) throw new Error('Groq応答が空です。再実行してください。');
+      if(!txt) throw new Error('応答が空です');
       callCount++;
-      el.meta.textContent = `このセッションのAPI呼び出し回数: ${callCount}`;
+      $('meta').textContent = `API呼び出し回数: ${callCount}`;
       return txt;
     }
 
-    // ── error ──
-    let apiMsg = `HTTP ${res.status}`;
-    try { apiMsg = JSON.parse(raw).error?.message || apiMsg; } catch(_) {}
-
-    if(res.status === 401 || res.status === 403)
-      throw new Error(`認証エラー (${res.status}) — console.groq.com でAPIキーを再確認してください`);
-
-    if(res.status === 429) {
-      if(attempt < MAX_RETRY) {
-        setStatus(`⚠ Rate Limit (429) — ${WAIT_429}秒待機後に自動リトライ (${attempt+1}/${MAX_RETRY})`, 'warn');
+    let apiErr = 'HTTP '+res.status;
+    try{ apiErr = JSON.parse(raw).error?.message || apiErr; }catch(_){}
+    if(res.status===401||res.status===403)
+      throw new Error('認証エラー — console.groq.com でAPIキーを確認してください');
+    if(res.status===429){
+      if(attempt<MAX_RETRY){
+        setStatus(`⚠ Rate Limit — ${WAIT_429}秒後に自動リトライ`, 'warn');
         startCd(WAIT_429);
-        await new Promise(r => setTimeout(r, WAIT_429 * 1000));
-        stopCd();
-        lastCallAt = 0; // skip gap check after a long wait
-        continue;
+        await new Promise(r=>setTimeout(r,WAIT_429*1000));
+        stopCd(); lastCallAt=0; continue;
       }
-      throw new Error('429 Rate Limit — 自動リトライに失敗しました。3分後に再実行してください。');
+      throw new Error('429 Rate Limit — 1分後に再実行してください');
     }
-
-    throw new Error(apiMsg);
+    throw new Error(apiErr);
   }
 }
 
-/* ─── MAIN ────────────────────────────────────────────── */
-async function run() {
-  if(running) return;
+/* ── CLEAR ───────────────────────────────────────────── */
+function clearAll() {
+  ST = {};
+  ['decomp-card','agents-card','verdict-card'].forEach(id=>$(id).style.display='none');
+  ['decomp-body','ag-a','ag-b','ag-c','ag-d','st-a','st-b','st-c','st-d','verdict-body'].forEach(id=>{ const e=$(id); if(e) e.innerHTML=''; });
+  [1,2,3].forEach(n=>setPhase(n,''));
+  setStatus(''); stopCd();
+  callCount=0; $('meta').textContent='';
+}
 
-  const key = el.key();
-  const q   = el.q();
+/* ══════════════════════════════════════════════════════
+   PHASE 1 — 深層問題分解 (Chain-of-Thought)
+══════════════════════════════════════════════════════ */
+async function phase1(q) {
+  setPhase(1,'active');
+  setStatus('Phase 1: 問題を深層分解中...', '');
+  $('decomp-card').style.display='block';
+  $('decomp-body').innerHTML='<div class="loading-dots" style="color:var(--d)">分析中</div>';
 
-  // validate inputs
-  if(!key)
-    return setStatus('APIキーを入力してください', 'err');
-  if(!key.startsWith('gsk_') || key.length < 20)
-    return setStatus('キー形式エラー — gsk_ で始まるGroqキーを確認してください', 'err');
-  if(!q)
-    return setStatus('質問・問題を入力してください', 'err');
+  const raw = await callAPI(
+    `あなたは戦略的問題分解の専門家です。
+ユーザーの問いを5つの層で徹底的に分解し、表面的な質問の奥にある本質的な課題を明らかにします。
+必ずJSONのみで応答してください。コードブロックや説明文は一切不要です。`,
 
-  // check cache
-  const cKey   = PFX + btoa(encodeURIComponent(q)).slice(0, 40);
-  const cached = cacheGet(cKey);
-  if(cached) {
-    renderResult(cached);
-    setStatus('✓ キャッシュから取得しました', 'ok');
-    return;
-  }
-
-  // start run
-  running = true;
-  el.btn.disabled = true;
-  setStatus('分析中...', '');
-  Object.values(el.agents).forEach(id => setLoading(id));
-
-  try {
-    /* ── CALL 1: 4エージェント同時分析（1回のAPIコールで取得）────────── */
-    setStatus('1/2: 4エージェントが分析中...', '');
-    const raw1 = await callAPI(
-`あなたは4つの専門的視点を持つ戦略AIです。
-以下の問いに対して、4つの視点それぞれで具体的な分析を行い、JSONのみで回答してください。
-マークダウン・コードブロック・説明文は一切不要です。JSONオブジェクトのみ出力してください。
+    `以下の問いを深層分解してください。
 
 問い: ${q}
 
-出力形式（各フィールドには実際の分析内容を150〜200文字で記述すること。テンプレート文をそのまま返すのは禁止）:
+各フィールドに具体的な日本語の分析を記述してください（テンプレート文禁止）。
+
 {
-  "alpha": "[戦略的視点: 競争優位・差別化・スケーラビリティの観点から分析した内容]",
-  "beta":  "[実務的視点: 具体的な実行ステップ・必要リソース・優先順位の観点から分析した内容]",
-  "gamma": "[批評的視点: リスク・盲点・反論・失敗シナリオの観点から分析した内容]",
-  "delta": "[原理的視点: 本質・構造・根本原因の観点から分析した内容]"
+  "surface": "表面的な問い（ユーザーが言っていること）",
+  "real_problem": "本当の問題（なぜこれを考えているのか）",
+  "hidden_assumption": "隠れた前提（暗黙的に信じていること）",
+  "success_definition": "成功の定義（何が達成されれば満足か）",
+  "core_tension": "コアな緊張（この問いに内在するトレードオフ・矛盾）",
+  "bottleneck": "最重要ボトルネック（これを解決すれば他が連鎖する1つの制約）",
+  "reframed": "問いの再定義（より正確な問いの立て方）"
 }`
-    );
+  );
 
-    const agents = safeJSON(raw1);
+  const j = safeJSON(raw);
+  if(!j?.reframed) throw new Error('Phase1 パース失敗: '+raw.slice(0,200));
+  ST.decomp = j;
 
-    // validate: both structure and content
-    if(!agents?.alpha || !agents?.beta || !agents?.gamma || !agents?.delta)
-      throw new Error('エージェント分析のJSONパースに失敗しました。\n\n応答の先頭: ' + raw1.slice(0, 200));
+  const colors = {surface:'#8892b0',real_problem:'#00c8ff',hidden_assumption:'#f5c400',success_definition:'#00ffaa',core_tension:'#ff5e5e',bottleneck:'#b57bff',reframed:'#00ffaa'};
+  const labels = {surface:'表層',real_problem:'真の問題',hidden_assumption:'隠れた前提',success_definition:'成功の定義',core_tension:'コアな緊張',bottleneck:'ボトルネック',reframed:'問いの再定義'};
+  const keys   = ['surface','real_problem','hidden_assumption','success_definition','core_tension','bottleneck','reframed'];
 
-    if(['alpha','beta','gamma','delta'].some(k => isPlaceholder(agents[k])))
-      throw new Error('テンプレート文がそのまま返されました。もう一度実行してください。');
+  $('decomp-body').innerHTML = keys.map(k=>`
+    <div class="decomp-row">
+      <div class="decomp-tag" style="background:${colors[k]}18;color:${colors[k]};border:1px solid ${colors[k]}40">${labels[k]}</div>
+      <div><div class="decomp-a">${esc(j[k])}</div></div>
+    </div>`).join('')
+    + `<div class="bottleneck">
+        <div class="bottleneck-lbl">◉ 再定義された問い</div>
+        <div style="font-size:.9rem;font-weight:600;color:var(--p)">${esc(j.reframed)}</div>
+       </div>`;
 
-    setText('el_a', agents.alpha);
-    setText('el_b', agents.beta);
-    setText('el_c', agents.gamma);
-    setText('el_d', agents.delta);
-    setLoading('el_o');
+  setPhase(1,'done');
+}
 
-    /* ── CALL 2: Ω 統合判断 ──────────────────────────────────────────── */
-    setStatus('2/2: Ω統合判断を生成中...', '');
-    const raw2 = await callAPI(
-`以下の4つの専門的視点による分析を統合し、意思決定者が今日から行動できる統合判断を示してください。
+/* ══════════════════════════════════════════════════════
+   PHASE 2 — 4エージェント独立分析（真の並列ペルソナ）
+══════════════════════════════════════════════════════ */
+async function phase2() {
+  setPhase(2,'active');
+  setStatus('Phase 2: 4エージェントが独立分析中...', '');
+  $('agents-card').style.display='block';
+  ['ag-a','ag-b','ag-c','ag-d','st-a','st-b','st-c','st-d'].forEach(id=>{
+    const e=$(id); if(e){ e.innerHTML=''; e.className = id.startsWith('ag') ? 'agent-body loading-dots' : 'agent-stance'; }
+  });
 
-問い: ${q}
+  const raw = await callAPI(
+    `あなたは4人の全く異なるペルソナを持つ専門家AIです。
+各ペルソナは独立した思考スタイルと価値観を持ち、同じ問題に対して異なる結論を出すことがあります。
+必ずJSONのみで応答してください。コードブロック・説明文は一切不要です。`,
 
-α戦略: ${agents.alpha}
-β実務: ${agents.beta}
-γ批評: ${agents.gamma}
-δ原理: ${agents.delta}
+    `以下の問いに対して、4つの独立したペルソナでそれぞれ分析してください。
 
-出力形式: プレーンテキスト（JSONは不要）。以下の構成で400文字以内にまとめること。
-【結論】1〜2文で最も重要な判断を述べる
-【根拠】3つの主要な根拠を簡潔に列挙
-【今日のアクション】24時間以内に取るべき最優先アクション1つを具体的に指示`
-    );
+元の問い: ${$('q').value.trim()}
+再定義された問い: ${ST.decomp.reframed}
+ボトルネック: ${ST.decomp.bottleneck}
+コアな緊張: ${ST.decomp.core_tension}
 
-    const omega = raw2?.trim() || '統合判断を生成できませんでした。再実行してください。';
-    setText('el_o', omega);
+【重要】各エージェントは完全に独立した視点を持ち、互いに矛盾する結論を出してよい。具体的な数値・事例・根拠を含めること。
 
-    const result = { alpha:agents.alpha, beta:agents.beta, gamma:agents.gamma, delta:agents.delta, omega };
-    cacheSet(cKey, result);
-    setStatus('✓ 完了', 'ok');
-
-  } catch(e) {
-    setStatus('⚠ ' + e.message, 'err');
-    // clear any still-loading agents
-    Object.values(el.agents).forEach(id => {
-      if($(id)?.classList.contains('loading')) setText(id, '');
-    });
+{
+  "alpha": {
+    "persona": "元McKinseyの戦略コンサルタント。競争優位・市場ポジショニング・スケールを重視。ROIで考える。",
+    "analysis": "競争戦略・市場・スケールの観点からの詳細分析（200字以上）",
+    "recommendation": "このペルソナとしての具体的な推奨アクション",
+    "confidence": 75,
+    "stance": "GO / WAIT / NO-GO のどれか1つ + 一言理由"
+  },
+  "beta": {
+    "persona": "元AmazonのGMO。実行・オペレーション・リソース配分のプロ。Working backwardsで考える。",
+    "analysis": "実行可能性・リソース・優先順位の観点からの詳細分析（200字以上）",
+    "recommendation": "このペルソナとしての具体的な推奨アクション",
+    "confidence": 70,
+    "stance": "GO / WAIT / NO-GO のどれか1つ + 一言理由"
+  },
+  "gamma": {
+    "persona": "リスク管理の専門家。最悪ケースと反論を徹底的に探す。楽観論を常に疑う。",
+    "analysis": "リスク・盲点・失敗シナリオの観点からの詳細分析（200字以上）",
+    "recommendation": "このペルソナとしての具体的な推奨アクション",
+    "confidence": 60,
+    "stance": "GO / WAIT / NO-GO のどれか1つ + 一言理由"
+  },
+  "delta": {
+    "persona": "第一原理思考の哲学者。「なぜ」を繰り返し、本質と構造を暴く。常識を疑う。",
+    "analysis": "本質・構造・第一原理の観点からの詳細分析（200字以上）",
+    "recommendation": "このペルソナとしての具体的な推奨アクション",
+    "confidence": 65,
+    "stance": "GO / WAIT / NO-GO のどれか1つ + 一言理由"
   }
+}`
+  );
 
-  running = false;
-  el.btn.disabled = false;
+  const j = safeJSON(raw);
+  if(!j?.alpha?.analysis) throw new Error('Phase2 パース失敗: '+raw.slice(0,200));
+  ST.agents = j;
+
+  ['alpha','beta','gamma','delta'].forEach((key,i)=>{
+    const ids = ['a','b','c','d'];
+    const id  = ids[i];
+    const ag  = j[key];
+    if(!ag) return;
+    $('ag-'+id).className='agent-body';
+    $('ag-'+id).textContent = ag.analysis || '';
+    $('st-'+id).textContent = `推奨: ${ag.recommendation||''}\n判断: ${ag.stance||''} (確信度 ${ag.confidence||'?'}%)`;
+  });
+
+  setPhase(2,'done');
 }
 
-function renderResult(r) {
-  setText('el_a', r.alpha);
-  setText('el_b', r.beta);
-  setText('el_c', r.gamma);
-  setText('el_d', r.delta);
-  setText('el_o', r.omega);
-}
-</script>
-</body>
-</html>
+/* ══════════════════════════════════════════════════════
+   PHASE 3 — Ω 統合・最終決断（エージェント間の対立を統合）
+══════════════════════════════════════════════════════ */
+async function phase3() {
+  setPhase(3,'active');
+  setStatus('Phase 3: Ω が4エージェントの意見を統合・最終決断中...', '');
+  $('verdict-card').style.display='block';
+  $('verdict-body').innerHTML='<div class="loading-dots" style="color:var(--d)">最終判断を生成中</div>';
+
+  const a = ST.agents;
+  const raw = await callAPI(
+    `あなたはΩ——4つのエージェントの意見を統合する最高意思決定AIです。
+各エージェントの主張を批判的に評価し、対立を解消して最終決断を下します。
+必ずJSONのみで応答してください。コードブロック・説明文は一切不要です。`,
+
+    `4つの専門家エージェントの分析を統合し、最終決断を下してください。
+
+【問いの再定義】${ST.decomp.reframed}
